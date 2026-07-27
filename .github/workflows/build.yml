@@ -1,0 +1,83 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  OBS_VERSION: 32.2.1
+
+jobs:
+  build:
+    runs-on: windows-latest
+    outputs:
+      artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download OBS Studio ${{ env.OBS_VERSION }} (for headers + obs.dll)
+        shell: pwsh
+        run: |
+          $release = Invoke-RestMethod "https://api.github.com/repos/obsproject/obs-studio/releases/tags/$env:OBS_VERSION"
+          $asset = $release.assets | Where-Object { $_.name -match 'Windows(-x64)?\.zip$' } | Select-Object -First 1
+          if (-not $asset) { throw "No Windows zip asset on obs-studio $env:OBS_VERSION" }
+          Invoke-WebRequest $asset.browser_download_url -OutFile obs.zip
+          Expand-Archive obs.zip -DestinationPath obs-dist
+          $dll = Get-ChildItem obs-dist -Recurse -Filter obs.dll | Where-Object { $_.FullName -match '64bit' } | Select-Object -First 1
+          if (-not $dll) { throw "obs.dll not found in the OBS zip" }
+          $obsRoot = $dll.Directory.Parent.Parent.FullName
+          "OBS_DIR=$obsRoot" | Out-File $env:GITHUB_ENV -Append
+
+      - name: Configure
+        run: cmake -S . -B build -A x64 -DOBS_INSTALL_DIR="${{ env.OBS_DIR }}" -DOBS_VERSION="${{ env.OBS_VERSION }}"
+
+      - name: Build
+        run: cmake --build build --config RelWithDebInfo
+
+      - name: Stage plugin layout
+        shell: pwsh
+        run: |
+          $stage = "stage/win-capture-audio"
+          New-Item -ItemType Directory -Force "$stage/bin/64bit", "$stage/data/locale" | Out-Null
+          Copy-Item build/RelWithDebInfo/win-capture-audio.dll "$stage/bin/64bit/"
+          Copy-Item build/RelWithDebInfo/win-capture-audio.pdb "$stage/bin/64bit/" -ErrorAction SilentlyContinue
+          Copy-Item data/locale/*.ini "$stage/data/locale/"
+          Get-FileHash "$stage/bin/64bit/win-capture-audio.dll" -Algorithm SHA256 | Format-List
+
+      - name: Upload unsigned artifact
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-capture-audio-${{ github.sha }}
+          path: stage/
+
+  # Code signing via SignPath.io (free for open source).
+  # Activates once the SignPath OSS application is approved and these repository
+  # secrets exist: SIGNPATH_API_TOKEN, SIGNPATH_ORG_ID. Update the project /
+  # policy slugs below to match the SignPath project configuration.
+  sign:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    steps:
+      - name: Submit signing request
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORG_ID }}
+          project-slug: win-capture-audio
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ needs.build.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Upload signed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-capture-audio-signed
+          path: signed/

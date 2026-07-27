@@ -1,0 +1,19 @@
+*~
+.DS_Store
+/build*/
+/release/
+/installer/Output/
+
+# generated libobs SDK (rebuilt automatically by cmake/bootstrap-obs-sdk.ps1)
+/deps/libobs-sdk/
+
+.vscode
+.idea
+.cache
+
+compile-commands.json
+compile_commands.json
+
+# ignore generated files
+*.generated.*
+*.dll.old
