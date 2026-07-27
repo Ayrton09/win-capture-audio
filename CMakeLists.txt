@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 project(win-capture-audio VERSION 2.3.0 LANGUAGES CXX)
 
 set(PLUGIN_AUTHOR "bozbez")
-set(PLUGIN_URL "https://github.com/bozbez/win-capture-audio")
+set(PLUGIN_URL "https://github.com/Ayrton09/win-capture-audio")
 
 if(NOT WIN32)
     message(FATAL_ERROR "win-capture-audio is a Windows-only plugin.")
@@ -164,17 +164,18 @@ set_target_properties(win-capture-audio PROPERTIES PREFIX "")
 # still works and is what the Inno Setup installer produces.
 # ---------------------------------------------------------------------------------
 
-# Legacy layout, consumed by installer/installer.iss.in.
+# Staged modern plugin layout: consumed by the Inno Setup installer and zipped
+# as the portable release artifact.
 add_custom_command(TARGET win-capture-audio POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E make_directory
-        "${RELEASE_DIR}/data/obs-plugins/${PROJECT_NAME}"
-        "${RELEASE_DIR}/obs-plugins/${ARCH_NAME}"
+        "${RELEASE_DIR}/bin/${ARCH_NAME}"
+        "${RELEASE_DIR}/data"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/data"
-        "${RELEASE_DIR}/data/obs-plugins/${PROJECT_NAME}"
+        "${RELEASE_DIR}/data"
     COMMAND "${CMAKE_COMMAND}" -E copy
         "$<TARGET_FILE:win-capture-audio>"
-        "${RELEASE_DIR}/obs-plugins/${ARCH_NAME}"
+        "${RELEASE_DIR}/bin/${ARCH_NAME}"
     VERBATIM)
 
 if(NOT DEFINED CMAKE_INSTALL_PREFIX OR CMAKE_INSTALL_PREFIX STREQUAL "")

@@ -15,7 +15,11 @@ This is a modernized fork of [bozbez/win-capture-audio](https://github.com/bozbe
 
 ## Installation
 
-Copy the plugin using the modern per-plugin layout under `%ProgramData%`:
+Grab the latest [release](../../releases): run the **setup installer** (it also removes any
+older version automatically, including 2.2.x installs inside the OBS directory), or use the
+**zip** for portable installs.
+
+Manual install — copy the plugin using the modern per-plugin layout under `%ProgramData%`:
 
 ```
 C:\ProgramData\obs-studio\plugins\win-capture-audio\
@@ -32,7 +36,7 @@ Restart OBS and add the **"Application Audio Output Capture"** source.
 Requirements: Visual Studio 2022 or later (MSVC C++ workload), and an installed copy of OBS Studio.
 
 ```
-git clone --depth 1 https://github.com/microsoft/wil.git deps/wil   # if deps/wil is empty
+git submodule update --init
 cmake -S . -B build -A x64
 cmake --build build --config RelWithDebInfo
 ```

@@ -39,22 +39,29 @@ jobs:
       - name: Build
         run: cmake --build build --config RelWithDebInfo
 
-      - name: Stage plugin layout
+      - name: Package (portable zip + setup installer)
         shell: pwsh
         run: |
-          $stage = "stage/win-capture-audio"
-          New-Item -ItemType Directory -Force "$stage/bin/64bit", "$stage/data/locale" | Out-Null
-          Copy-Item build/RelWithDebInfo/win-capture-audio.dll "$stage/bin/64bit/"
-          Copy-Item build/RelWithDebInfo/win-capture-audio.pdb "$stage/bin/64bit/" -ErrorAction SilentlyContinue
-          Copy-Item data/locale/*.ini "$stage/data/locale/"
-          Get-FileHash "$stage/bin/64bit/win-capture-audio.dll" -Algorithm SHA256 | Format-List
+          New-Item -ItemType Directory -Force dist | Out-Null
+
+          # portable zip: extract into <obs>/... or %ProgramData%/obs-studio/plugins/
+          New-Item -ItemType Directory -Force stage/win-capture-audio | Out-Null
+          Copy-Item build/release/* stage/win-capture-audio -Recurse
+          Compress-Archive stage/win-capture-audio dist/win-capture-audio.zip
+
+          # setup installer (Inno Setup is preinstalled on windows-latest)
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Odist build\installer.generated.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+
+          Copy-Item build/RelWithDebInfo/win-capture-audio.pdb dist/ -ErrorAction SilentlyContinue
+          Get-ChildItem dist -File | Get-FileHash -Algorithm SHA256 | Format-List Path, Hash
 
       - name: Upload unsigned artifact
         id: upload-unsigned
         uses: actions/upload-artifact@v4
         with:
           name: win-capture-audio-${{ github.sha }}
-          path: stage/
+          path: dist/
 
   # Code signing via SignPath.io (free for open source).
   # Activates once the SignPath OSS application is approved and these repository
