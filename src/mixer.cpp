@@ -200,8 +200,8 @@ Mixer::Mixer(obs_source_t *source, WAVEFORMATEX format) : source{source}, format
 
 Mixer::~Mixer()
 {
-	if (timer)
-		DeleteTimerQueueTimer(NULL, timer, INVALID_HANDLE_VALUE);
+	if (timer && !DeleteTimerQueueTimer(NULL, timer, INVALID_HANDLE_VALUE))
+		warn("DeleteTimerQueueTimer failed (%lu)", GetLastError());
 
 	worker_ready.wait();
 	PostThreadMessageW(worker_tid, MixerEvents::Shutdown, NULL, NULL);

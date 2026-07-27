@@ -147,8 +147,10 @@ void SessionMonitor::Init()
 
 void SessionMonitor::UnInit()
 {
-	THROW_IF_FAILED(
-		enumerator->UnregisterEndpointNotificationCallback(&device_notification_client));
+	// Non-throwing on purpose: this runs on failure paths and at shutdown, where
+	// the enumerator may not exist or the callback may never have registered.
+	if (enumerator)
+		enumerator->UnregisterEndpointNotificationCallback(&device_notification_client);
 }
 
 void SessionMonitor::AddDevice(MSG msg)
@@ -281,7 +283,16 @@ void SessionMonitor::Run()
 	PeekMessageA(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
 
 	worker_ready.SetEvent();
-	Init();
+
+	try {
+		Init();
+	} catch (const wil::ResultException &e) {
+		// Without a device enumerator there is nothing to monitor; leave no
+		// half-registered COM callbacks behind.
+		error("session monitor init failed: %s", e.what());
+		UnInit();
+		return;
+	}
 
 	bool shutdown = false;
 	while (!shutdown) {
