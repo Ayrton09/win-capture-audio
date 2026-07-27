@@ -8,7 +8,12 @@ on:
   workflow_dispatch:
 
 env:
-  OBS_VERSION: 32.2.1
+  # Oldest supported OBS: release binaries are built against these headers so
+  # obs_module_ver reports 28.0.0 and OBS 32's module-version gate
+  # ((ver & 0xFFFF0000) > LIBOBS_API_VER -> reject) accepts the plugin on
+  # every OBS release from 28 up. Building against a newer tag would make
+  # OBS 32.0/32.1 refuse to load it.
+  OBS_VERSION: 28.0.0
 
 jobs:
   build:
