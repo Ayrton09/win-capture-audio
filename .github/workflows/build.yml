@@ -29,7 +29,9 @@ jobs:
         shell: pwsh
         run: |
           $release = Invoke-RestMethod "https://api.github.com/repos/obsproject/obs-studio/releases/tags/$env:OBS_VERSION"
-          $asset = $release.assets | Where-Object { $_.name -match 'Windows(-x64)?\.zip$' } | Select-Object -First 1
+          # Naming changed across releases: 28.x ships "OBS-Studio-28.0-Full-x64.zip",
+          # newer versions ship "OBS-Studio-<ver>-Windows.zip".
+          $asset = $release.assets | Where-Object { $_.name -match '(Windows(-x64)?|Full-x64)\.zip$' } | Select-Object -First 1
           if (-not $asset) { throw "No Windows zip asset on obs-studio $env:OBS_VERSION" }
           Invoke-WebRequest $asset.browser_download_url -OutFile obs.zip
           Expand-Archive obs.zip -DestinationPath obs-dist
