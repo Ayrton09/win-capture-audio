@@ -1,0 +1,44 @@
+name: Bug report
+description: Something is broken or audio is not being captured
+labels: [bug]
+body:
+  - type: input
+    id: obs-version
+    attributes:
+      label: OBS Studio version
+      placeholder: "e.g. 32.2.1"
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Shown in the OBS log as "[win-capture-audio] Version x.y.z"
+      placeholder: "e.g. 2.3.0"
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      placeholder: "e.g. Windows 11 24H2"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead? Which application were you capturing?
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: OBS log
+      description: >-
+        In OBS choose Help → Log Files → Upload Current Log File and paste the URL here,
+        after reproducing the problem. Reports without a log are usually impossible to
+        diagnose.
+      placeholder: "https://obsproject.com/logs/..."
+    validations:
+      required: true

@@ -95,3 +95,50 @@ jobs:
         with:
           name: win-capture-audio-signed
           path: signed/
+
+  # Draft a GitHub Release on every tag with the artifacts and their checksums.
+  # Uses the SignPath-signed artifacts when signing succeeded, the unsigned CI
+  # build otherwise (so releases still work before SignPath approval). The
+  # release is created as a DRAFT: review the notes, then publish manually.
+  release:
+    needs: [build, sign]
+    if: ${{ always() && startsWith(github.ref, 'refs/tags/') && needs.build.result == 'success' }}
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download signed artifact
+        if: needs.sign.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: win-capture-audio-signed
+          path: dist
+
+      - name: Download unsigned artifact
+        if: needs.sign.result != 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: win-capture-audio-${{ github.sha }}
+          path: dist
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -File -Recurse | Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" } |
+            Out-File dist/SHA256SUMS.txt -Encoding ascii
+          Get-Content dist/SHA256SUMS.txt
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: win-capture-audio ${{ github.ref_name }}
+          files: dist/**
+          body: |
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for the full list of changes.
+
+            **Install:** run `win-capture-audio-${{ github.ref_name }}-setup.exe` (removes any older version automatically), or extract the zip into `%ProgramData%\obs-studio\plugins\` for portable installs.
+
+            SHA-256 checksums are attached as `SHA256SUMS.txt`.
+            ${{ needs.sign.result != 'success' && '> Note: these binaries are unsigned (SignPath signing was not available for this build).' || '' }}
