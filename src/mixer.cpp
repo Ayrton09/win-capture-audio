@@ -95,14 +95,17 @@ std::size_t Mixer::TimestampToMixOffset(UINT64 timestamp)
 
 std::tuple<std::size_t, std::size_t> Mixer::CalculateCutoff(UINT64 timestamp)
 {
-	if (timestamp < cutoff_end)
+	const UINT64 start_window = cutoff_start.load(std::memory_order_relaxed);
+	const UINT64 end_window = cutoff_end.load(std::memory_order_relaxed);
+
+	if (timestamp < end_window)
 		return {0, 0};
 
-	if (timestamp < cutoff_start)
-		return {0, TimestampToMixOffset(timestamp - cutoff_end)};
+	if (timestamp < start_window)
+		return {0, TimestampToMixOffset(timestamp - end_window)};
 
-	auto start = TimestampToMixOffset(timestamp - cutoff_start);
-	auto end = TimestampToMixOffset(timestamp - cutoff_end);
+	auto start = TimestampToMixOffset(timestamp - start_window);
+	auto end = TimestampToMixOffset(timestamp - end_window);
 
 	return {start, end};
 }

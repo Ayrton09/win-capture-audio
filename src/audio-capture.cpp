@@ -37,6 +37,48 @@ AudioCaptureHelperManager helper_manager;
 // Not a valid process id, so it can stand in for "no parent" without ever matching one.
 static constexpr DWORD NO_PARENT_PID = static_cast<DWORD>(-1);
 
+// Case-insensitive wildcard match: '*' spans any run, '?' any single character.
+// Windows filenames are case-insensitive, so "spotify.exe" must match
+// "Spotify.exe"; the old exact std::set lookup silently did not.
+static bool WildcardMatch(const char *pattern, const char *str)
+{
+	const char *star = nullptr;
+	const char *star_str = nullptr;
+
+	while (*str) {
+		char p = (char)tolower((unsigned char)*pattern);
+		char s = (char)tolower((unsigned char)*str);
+
+		if (p == s || p == '?') {
+			++pattern;
+			++str;
+		} else if (p == '*') {
+			star = pattern++;
+			star_str = str;
+		} else if (star) {
+			pattern = star + 1;
+			str = ++star_str;
+		} else {
+			return false;
+		}
+	}
+
+	while (*pattern == '*')
+		++pattern;
+
+	return *pattern == '\0';
+}
+
+static bool MatchesAnyExecutable(const std::set<std::string> &patterns, const std::string &executable)
+{
+	for (const auto &pattern : patterns) {
+		if (WildcardMatch(pattern.c_str(), executable.c_str()))
+			return true;
+	}
+
+	return false;
+}
+
 static std::unordered_map<DWORD, DWORD> GetProcessParents(const std::set<DWORD> &pids)
 {
 	std::unordered_map<DWORD, DWORD> parent_map;
@@ -141,6 +183,7 @@ void AudioCapture::StartCapture(const std::set<DWORD> &new_pids)
 		helper_manager.RegisterMixer(new_pid, &mixer.value());
 	}
 
+	auto lock = pids_section.lock();
 	pids = new_pids;
 }
 
@@ -149,7 +192,14 @@ void AudioCapture::StopCapture()
 	for (auto pid : pids)
 		helper_manager.UnRegisterMixer(pid, &mixer.value());
 
+	auto lock = pids_section.lock();
 	pids.clear();
+}
+
+std::set<DWORD> AudioCapture::GetCapturedPids()
+{
+	auto lock = pids_section.lock();
+	return pids;
 }
 
 void AudioCapture::WorkerUpdate()
@@ -188,7 +238,7 @@ void AudioCapture::WorkerUpdate()
 	std::set<DWORD> exclude_pids;
 
 	for (auto &[key, executable] : sessions) {
-		if ((!config.executables.contains(executable)) ^ config.exclude) {
+		if ((!MatchesAnyExecutable(config.executables, executable)) ^ config.exclude) {
 			exclude_pids.insert(key.pid);
 			continue;
 		}
@@ -265,6 +315,9 @@ void AudioCapture::Update(obs_data_t *settings)
 
 	if (new_config.mode == MODE_SESSION)
 		new_config.executables = GetExecutables(settings);
+
+	if (mixer)
+		mixer->SetLowLatency(obs_data_get_int(settings, SETTING_LATENCY) == 1);
 
 	auto lock = config_section.lock();
 	config = std::move(new_config);
@@ -469,6 +522,21 @@ static bool executable_list_callback(void *data, obs_properties_t *ps, obs_prope
 
 	obs_property_list_clear(active_session_list);
 	ctx->FillActiveSessionList(active_session_list, active_session_add);
+	ctx->UpdateStatus(ps);
+
+	return true;
+}
+
+static bool session_refresh_callback(obs_properties_t *ps, obs_property_t *p, void *data)
+{
+	auto *ctx = static_cast<AudioCapture *>(data);
+
+	auto *active_session_list = obs_properties_get(ps, SETTING_ACTIVE_SESSION_LIST);
+	auto *active_session_add = obs_properties_get(ps, SETTING_ACTIVE_SESSION_ADD);
+
+	obs_property_list_clear(active_session_list);
+	ctx->FillActiveSessionList(active_session_list, active_session_add);
+	ctx->UpdateStatus(ps);
 
 	return true;
 }
@@ -502,6 +570,7 @@ static bool session_add_callback(obs_properties_t *ps, obs_property_t *p, void *
 
 	obs_property_list_clear(active_session_list);
 	ctx->FillActiveSessionList(active_session_list, active_session_add);
+	ctx->UpdateStatus(ps);
 
 	obs_data_release(executable_obj);
 	obs_data_array_release(executable_list_array);
@@ -545,7 +614,7 @@ void AudioCapture::FillActiveSessionList(obs_property_t *session_list, obs_prope
 	std::vector<std::tuple<std::string, std::set<DWORD>>> disabled_session_options;
 
 	for (auto &[executable, pids] : session_options) {
-		if (executables.contains(executable)) {
+		if (MatchesAnyExecutable(executables, executable)) {
 			disabled_session_options.push_back({executable, pids});
 			continue;
 		}
@@ -577,11 +646,53 @@ void AudioCapture::FillActiveSessionList(obs_property_t *session_list, obs_prope
 	obs_data_release(settings);
 }
 
+void AudioCapture::UpdateStatus(obs_properties_t *ps)
+{
+	auto *status = obs_properties_get(ps, SETTING_STATUS);
+	if (!status)
+		return;
+
+	auto captured = GetCapturedPids();
+	if (captured.empty()) {
+		obs_property_set_description(status, TEXT_STATUS_NONE);
+		return;
+	}
+
+	auto *monitor = SessionMonitor::Instance();
+	auto sessions = monitor ? monitor->GetSessions()
+				: std::unordered_map<SessionKey, std::string>{};
+
+	std::set<std::string> names;
+	for (auto &[key, executable] : sessions) {
+		if (captured.contains(key.pid))
+			names.insert(executable);
+	}
+
+	std::string text = TEXT_STATUS_CAPTURING;
+	if (names.empty()) {
+		// Hotkey mode can capture a window whose process has no audio
+		// session entry yet.
+		text += std::format(" {} pid(s)", captured.size());
+	} else {
+		bool first = true;
+		for (auto &name : names) {
+			text += first ? " " : ", ";
+			text += name;
+			first = false;
+		}
+	}
+
+	obs_property_set_description(status, text.c_str());
+}
+
 static obs_properties_t *audio_capture_properties(void *data)
 {
 	auto *ctx = static_cast<AudioCapture *>(data);
 
 	obs_properties_t *ps = obs_properties_create();
+
+	// Live status line ("Capturing: chrome.exe, spotify.exe")
+	obs_properties_add_text(ps, SETTING_STATUS, TEXT_STATUS_NONE, OBS_TEXT_INFO);
 
 	// Mode setting (specific session or hotkey)
 	auto *mode = obs_properties_add_list(ps, SETTING_MODE, TEXT_MODE, OBS_COMBO_TYPE_LIST,
@@ -602,6 +713,13 @@ static obs_properties_t *audio_capture_properties(void *data)
 	// Exclude setting
 	obs_properties_add_bool(ps, SETTING_EXCLUDE, TEXT_EXCLUDE);
 
+	// Latency setting
+	auto *latency = obs_properties_add_list(ps, SETTING_LATENCY, TEXT_LATENCY,
+						OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+
+	obs_property_list_add_int(latency, TEXT_LATENCY_NORMAL, 0);
+	obs_property_list_add_int(latency, TEXT_LATENCY_LOW, 1);
+
 	// Active session group
 	obs_properties_t *active_session_group = obs_properties_create();
 
@@ -619,11 +737,18 @@ static obs_properties_t *audio_capture_properties(void *data)
 		obs_properties_add_button2(active_session_group, SETTING_ACTIVE_SESSION_ADD,
 					   TEXT_ACTIVE_SESSION_ADD, session_add_callback, ctx);
 
+	// Refresh button: sessions that appear while the dialog is open used to
+	// require closing and reopening it.
+	obs_properties_add_button2(active_session_group, SETTING_ACTIVE_SESSION_REFRESH,
+				   TEXT_ACTIVE_SESSION_REFRESH, session_refresh_callback, ctx);
+
 	ctx->FillActiveSessionList(active_session_list, active_session_add);
 
 	// Active session group
 	obs_properties_add_group(ps, SETTING_ACTIVE_SESSION_GROUP, TEXT_ACTIVE_SESSION_GROUP,
 				 OBS_GROUP_NORMAL, active_session_group);
+
+	ctx->UpdateStatus(ps);
 
 	return ps;
 }
@@ -637,6 +762,7 @@ static void audio_capture_defaults(obs_data_t *settings)
 	obs_data_array_release(executable_list);
 
 	obs_data_set_default_bool(settings, SETTING_EXCLUDE, false);
+	obs_data_set_default_int(settings, SETTING_LATENCY, 0);
 }
 
 static const char *audio_capture_get_name(void *type_data)

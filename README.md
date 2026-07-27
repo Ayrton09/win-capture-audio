@@ -2,7 +2,7 @@
 
 An OBS plugin similar to OBS's win-capture/game-capture that allows for audio capture from specific applications, rather than the system's audio as a whole.
 
-Compared to OBS's built-in "Application Audio Capture (BETA)" source, this plugin captures by **executable name** (no window required, so it survives the app restarting), supports **multiple applications** in one source, an **exclude mode**, and a **hotkey mode** that captures whatever application is in the foreground.
+Compared to OBS's built-in "Application Audio Capture (BETA)" source, this plugin captures by **executable name** (no window required, so it survives the app restarting — wildcards like `League*.exe` supported), handles **multiple applications** in one source, an **exclude mode**, a **hotkey mode** that captures whatever application is in the foreground, and a selectable **low-latency mode** for single-application capture.
 
 Internally it uses [ActivateAudioInterfaceAsync](https://learn.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-activateaudiointerfaceasync) with [AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS](https://learn.microsoft.com/en-us/windows/win32/api/audioclientactivationparams/ns-audioclientactivationparams-audioclient_process_loopback_params).
 

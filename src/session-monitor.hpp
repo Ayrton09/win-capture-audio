@@ -195,6 +195,8 @@ private:
 	std::wstring session_id;
 	std::string executable;
 
+	std::string ResolveExecutable();
+
 public:
 	SessionWatcher(DWORD worker_tid, const wil::com_ptr<IAudioSessionControl> &session_control);
 

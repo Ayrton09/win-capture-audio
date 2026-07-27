@@ -25,8 +25,11 @@
 #define SETTING_ACTIVE_SESSION_GROUP   "active_session_group"
 #define SETTING_ACTIVE_SESSION_LIST    "active_session_list"
 #define SETTING_ACTIVE_SESSION_ADD     "active_session_add"
+#define SETTING_ACTIVE_SESSION_REFRESH "active_session_refresh"
 
 #define SETTING_EXCLUDE                "exclude"
+#define SETTING_LATENCY                "latency"
+#define SETTING_STATUS                 "status"
 
 #define TEXT_NAME                      obs_module_text("Name")
 
@@ -39,8 +42,14 @@
 #define TEXT_ACTIVE_SESSION_GROUP      obs_module_text("ActiveSession.Group")
 #define TEXT_ACTIVE_SESSION_LIST       obs_module_text("ActiveSession.List")
 #define TEXT_ACTIVE_SESSION_ADD        obs_module_text("ActiveSession.Add")
+#define TEXT_ACTIVE_SESSION_REFRESH    obs_module_text("ActiveSession.Refresh")
 
 #define TEXT_EXCLUDE                   obs_module_text("Exclude")
+#define TEXT_LATENCY                   obs_module_text("Latency")
+#define TEXT_LATENCY_NORMAL            obs_module_text("Latency.Normal")
+#define TEXT_LATENCY_LOW               obs_module_text("Latency.Low")
+#define TEXT_STATUS_CAPTURING          obs_module_text("Status.Capturing")
+#define TEXT_STATUS_NONE               obs_module_text("Status.None")
 
 #define TEXT_HOTKEY_START              obs_module_text("Hotkey.Start")
 #define TEXT_HOTKEY_STOP               obs_module_text("Hotkey.Stop")
@@ -80,6 +89,9 @@ private:
 	WAVEFORMATEX format;
 	std::optional<Mixer> mixer;
 
+	// Owned by the worker thread; pids_section guards the writes so the UI
+	// thread can snapshot it for the status line.
+	wil::critical_section pids_section;
 	std::set<DWORD> pids;
 
 	void StartCapture(const std::set<DWORD> &new_pids);
@@ -102,6 +114,8 @@ public:
 	MakeSessionOptionStrings(std::set<DWORD> pids, const std::string &executable, bool added);
 
 	void FillActiveSessionList(obs_property_t *session_list, obs_property_t *session_add);
+	void UpdateStatus(obs_properties_t *ps);
+	std::set<DWORD> GetCapturedPids();
 	std::set<std::string> GetExecutables(obs_data_t *settings);
 
 	bool IsUwpWindow(HWND window);

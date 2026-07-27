@@ -6,6 +6,23 @@ Modernization release: builds and runs against OBS Studio 32.x on current Window
 Verified end-to-end against OBS 32.2.1 on Windows 11 25H2 (source created, sessions listed,
 audio captured, clean log). Based on upstream 2.2.3 (bozbez, 2022).
 
+### New features
+
+- **Wildcard matching** in the executable list: entries like `League*.exe` or
+  `obs*` now work, and matching is case-insensitive (Windows filenames are, and
+  the old exact lookup silently was not).
+- **Latency setting**: "Low (single application)" halves the mixer's alignment
+  window (~40 ms → ~20 ms of added latency) for the common one-app case;
+  "Normal" keeps the safer margin for mixing several applications.
+- **Live status line** in the source properties showing exactly which
+  executables are being captured.
+- **Refresh button** for the active-session list — no more closing and
+  reopening the properties dialog to see an application you just started.
+- **Better names for protected processes**: sessions whose process cannot be
+  opened (elevated games, anti-cheat) now get their executable name parsed out
+  of the WASAPI session identifier, falling back to the session display name,
+  instead of all showing up as "unknown".
+
 ### Build system (rewritten)
 
 - **New CMake build that works without an OBS source build.** OBS's Windows installer ships

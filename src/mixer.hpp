@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <thread>
 #include <queue>
 #include <vector>
@@ -23,8 +24,13 @@ class Mixer {
 private:
 	static const UINT64 ms_in_ts = 10000;
 
-	static const UINT64 cutoff_start = 120 * ms_in_ts;
-	static const UINT64 cutoff_end = 40 * ms_in_ts;
+	// cutoff_end is how long we wait for late packets from other capture
+	// helpers before shipping audio to OBS, i.e. the latency this source
+	// adds. cutoff_start bounds how far back we still emit. Runtime-settable:
+	// capturing a single application does not need the safety margin that
+	// mixing several does.
+	std::atomic<UINT64> cutoff_start{120 * ms_in_ts};
+	std::atomic<UINT64> cutoff_end{40 * ms_in_ts};
 
 	static const DWORD tick_interval = 10;
 
@@ -59,6 +65,12 @@ private:
 
 public:
 	WAVEFORMATEX GetFormat() { return format; }
+
+	void SetLowLatency(bool low)
+	{
+		cutoff_start = (low ? 60 : 120) * ms_in_ts;
+		cutoff_end = (low ? 20 : 40) * ms_in_ts;
+	}
 
 	void SubmitPacket(UINT64 timestamp, float *data, UINT32 num_frames);
 

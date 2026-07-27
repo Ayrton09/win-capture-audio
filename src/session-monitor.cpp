@@ -66,6 +66,69 @@ DeviceWatcher::~DeviceWatcher()
 	manager2->UnregisterSessionNotification(&session_notification_client);
 }
 
+static std::string WideToUtf8(const wchar_t *wide)
+{
+	if (!wide || !*wide)
+		return {};
+
+	auto num_chars = WideCharToMultiByte(CP_UTF8, 0, wide, -1, NULL, 0, NULL, NULL);
+	if (num_chars <= 0)
+		return {};
+
+	std::string out(static_cast<std::size_t>(num_chars) - 1, '\0');
+	WideCharToMultiByte(CP_UTF8, 0, wide, -1, out.data(), num_chars, NULL, NULL);
+	return out;
+}
+
+// WASAPI session identifiers look like
+//   {device-guid}|\Device\HarddiskVolume3\...\app.exe%b{instance-guid}
+// so the executable name can be recovered from the identifier alone. That works
+// even for elevated/protected processes (anti-cheat games) that OpenProcess
+// cannot touch, which previously all showed up as "unknown".
+static std::string ExecutableFromSessionId(const std::wstring &session_id)
+{
+	auto head = session_id.substr(0, session_id.rfind(L"%b"));
+
+	auto slash = head.find_last_of(L"\\/");
+	if (slash == std::wstring::npos || slash + 1 >= head.size())
+		return {};
+
+	return WideToUtf8(head.substr(slash + 1).c_str());
+}
+
+std::string SessionWatcher::ResolveExecutable()
+{
+	// Preferred: the real image name of the process.
+	wil::unique_process_handle session_process{
+		OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid)};
+
+	if (session_process) {
+		wchar_t name_buf[MAX_PATH] = {L'\0'};
+		if (GetProcessImageFileNameW(session_process.get(), name_buf, MAX_PATH)) {
+			auto path = WideToUtf8(name_buf);
+			auto name = path.substr(path.find_last_of('\\') + 1);
+			if (!name.empty())
+				return name;
+		}
+	}
+
+	// Fallback 1: parse it out of the session identifier.
+	auto name = ExecutableFromSessionId(session_id);
+	if (!name.empty())
+		return name;
+
+	// Fallback 2: whatever display name the application registered.
+	wil::unique_cotaskmem_string display;
+	if (SUCCEEDED(session_control->GetDisplayName(display.put()))) {
+		auto display_name = WideToUtf8(display.get());
+		if (!display_name.empty())
+			return display_name;
+	}
+
+	warn("could not resolve an executable name for pid %lu", pid);
+	return std::string("unknown");
+}
+
 SessionWatcher::SessionWatcher(DWORD worker_tid,
 			       const wil::com_ptr<IAudioSessionControl> &session_control)
 	: session_control{session_control}
@@ -82,36 +145,7 @@ SessionWatcher::SessionWatcher(DWORD worker_tid,
 	THROW_IF_FAILED(
 		session_control->RegisterAudioSessionNotification(&notification_client.value()));
 
-	wil::unique_process_handle session_process{
-		OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid)};
-
-	if (session_process.get() == NULL) {
-		executable = std::string("unknown");
-		return;
-	}
-
-	wchar_t name_buf[MAX_PATH] = {L'\0'};
-	DWORD length = GetProcessImageFileNameW(session_process.get(), name_buf, MAX_PATH);
-
-	// A zero return leaves name_buf empty, which used to silently produce a session
-	// named "" that could never be matched against an executable list entry.
-	if (length == 0) {
-		warn("GetProcessImageFileNameW failed for pid %lu (0x%lx)", pid, GetLastError());
-		executable = std::string("unknown");
-		return;
-	}
-
-	auto num_chars = WideCharToMultiByte(CP_UTF8, 0, name_buf, -1, NULL, 0, NULL, NULL);
-	if (num_chars <= 0) {
-		warn("could not convert image name for pid %lu", pid);
-		executable = std::string("unknown");
-		return;
-	}
-
-	std::string executable_path(static_cast<std::size_t>(num_chars) - 1, '\0');
-	WideCharToMultiByte(CP_UTF8, 0, name_buf, -1, executable_path.data(), num_chars, NULL, NULL);
-
-	executable = executable_path.substr(executable_path.find_last_of("\\") + 1);
+	executable = ResolveExecutable();
 	debug("registered new session: [%d] %s", pid, executable.c_str());
 }
 
