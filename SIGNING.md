@@ -25,8 +25,19 @@ para eso la firma debe encadenar a una CA en la que Windows confía.
    aparece en `CurrentUser\My`).
 2. **Azure Trusted Signing** (~10 US$/mes): verificación individual u organizacional,
    integración por CLI; buena opción si ya usás Azure.
-3. **SignPath.io – plan open source** (gratis para proyectos OSS con CI público): firma en
-   la nube integrada a GitHub Actions; requiere que el repo sea público y aprobación.
+3. **SignPath.io – plan open source** (gratis; la ruta elegida para este proyecto): firma en
+   la nube integrada al CI. El workflow ya está preparado en
+   `.github/workflows/build.yml` (job `sign`, corre al taggear). Pasos pendientes, una vez
+   que el repo esté público en GitHub:
+   1. Solicitar el plan OSS en <https://about.signpath.io/product/open-source> indicando la
+      URL del repo (aprueban proyectos OSS reales; tarda unos días).
+   2. En la organización SignPath que te crean: proyecto `win-capture-audio`, signing policy
+      `release-signing`, y un Artifact Configuration para el zip del artefacto de CI
+      (deep-sign de `bin/64bit/win-capture-audio.dll`).
+   3. En GitHub → Settings → Secrets and variables → Actions, crear
+      `SIGNPATH_API_TOKEN` y `SIGNPATH_ORG_ID` con los valores que da SignPath.
+   4. Taggear una release: el job `sign` sube el artefacto, SignPath lo firma con su
+      certificado OSS (confiable para Windows) y el workflow publica el artefacto firmado.
 4. **OV clásico** (Sectigo/DigiCert, ~70–400 US$/año): innecesariamente caro para esto.
 
 Con cualquiera de ellos, el único cambio es el valor de `-Thumbprint`.
