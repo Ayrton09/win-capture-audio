@@ -61,6 +61,11 @@ If you have a self-built OBS instead, point `CMAKE_PREFIX_PATH` at it and the us
 - **No audio captured:** make sure the target application is actually playing audio and appears in the Windows volume mixer. The capture attaches per audio session; an app that has not opened an audio stream yet has nothing to capture.
 - **Crackling or dropouts:** lower the OBS audio buffering (Settings → Advanced → Audio) or report it with a log.
 
+## Code signing
+
+Free code signing for releases is provided by the [SignPath Foundation](https://signpath.org),
+with certificate and infrastructure by [SignPath.io](https://about.signpath.io).
+
 ## License
 
 GPLv2 — see [LICENSE](LICENSE).
