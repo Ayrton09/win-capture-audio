@@ -84,6 +84,7 @@ private:
 
 public:
 	DWORD GetPid() { return pid; }
+	WAVEFORMATEX GetFormat() { return format; }
 
 	AudioCaptureHelper(Mixer *mixer, WAVEFORMATEX format, DWORD pid);
 	~AudioCaptureHelper();

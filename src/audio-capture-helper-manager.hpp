@@ -62,9 +62,24 @@ public:
 		try {
 			// The helper must produce what this mixer expects, so take the
 			// format from the mixer rather than from a fresh query.
-			auto [it, inserted] = helpers.try_emplace(pid, mixer, mixer->GetFormat(), pid);
-			if (!inserted)
+			auto format = mixer->GetFormat();
+			auto [it, inserted] = helpers.try_emplace(pid, mixer, format, pid);
+			if (!inserted) {
+				// Sources created before and after an OBS audio-settings
+				// change can carry different formats; the shared helper
+				// keeps the first one, so flag the mismatch instead of
+				// producing silently broken audio.
+				auto existing = it->second.GetFormat();
+				if (existing.nChannels != format.nChannels ||
+				    existing.nSamplesPerSec != format.nSamplesPerSec)
+					warn("format mismatch on pid %lu helper "
+					     "(%u ch @ %lu Hz vs %u ch @ %lu Hz) - "
+					     "recreate the source or restart OBS",
+					     pid, existing.nChannels, existing.nSamplesPerSec,
+					     format.nChannels, format.nSamplesPerSec);
+
 				it->second.RegisterMixer(mixer);
+			}
 		} catch (const wil::ResultException &e) {
 			error("failed to create helper... update Windows?");
 			error("%s", e.what());

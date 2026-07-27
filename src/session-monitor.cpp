@@ -318,6 +318,8 @@ void SessionMonitor::Run()
 			}
 		} catch (const wil::ResultException &e) {
 			error("failed to process event %u: %s", msg.message, e.what());
+		} catch (const std::exception &e) {
+			error("failed to process event %u: %s", msg.message, e.what());
 		}
 	}
 

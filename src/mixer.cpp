@@ -57,7 +57,8 @@ void Mixer::ProcessInput(UINT64 input_timestamp, std::vector<float> &input_buffe
 
 	// A stalled tick timer or a wild input timestamp must not grow the mix
 	// without bound; past this point something is broken, so restart cleanly.
-	static const std::size_t max_mix_samples = format.nChannels * DurationToFrames(5000 * ms_in_ts);
+	// (Not static: each Mixer's cap must follow its own format.)
+	const std::size_t max_mix_samples = format.nChannels * DurationToFrames(5000 * ms_in_ts);
 	if (offset + input_buffer.size() > max_mix_samples) {
 		warn("mix buffer overflow - resetting");
 		mix_timestamp = input_timestamp;
