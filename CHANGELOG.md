@@ -8,6 +8,15 @@ audio captured, clean log). Based on upstream 2.2.3 (bozbez, 2022).
 
 ### New features
 
+- **Native exclude capture.** Exclude mode now uses Windows'
+  `PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE` when the excluded
+  executables resolve to a single process tree: one capture client covers the
+  whole system minus that application, instead of enumerating audio sessions and
+  spawning a capture thread per application. It also picks up audio the old path
+  missed entirely (system sounds, applications that had not opened a stream yet).
+  This makes the common streaming setup work: capture an application in one
+  source and everything-except-it in another, so it can be kept off a recording
+  track without leaking back in through desktop audio.
 - **Wildcard matching** in the executable list: entries like `League*.exe` or
   `obs*` now work, and matching is case-insensitive (Windows filenames are, and
   the old exact lookup silently was not).
