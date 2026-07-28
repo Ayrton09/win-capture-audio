@@ -66,10 +66,20 @@ private:
 public:
 	WAVEFORMATEX GetFormat() { return format; }
 
+	// cutoff_start must stay strictly greater than cutoff_end (see Tick).
 	void SetLowLatency(bool low)
 	{
-		cutoff_start = (low ? 60 : 120) * ms_in_ts;
-		cutoff_end = (low ? 20 : 40) * ms_in_ts;
+		static_assert(60 > 20 && 120 > 40, "cutoff_start must exceed cutoff_end");
+
+		// Widen the window before narrowing it so the invariant holds even
+		// for a worker tick that lands between these two stores.
+		if (low) {
+			cutoff_start = 60 * ms_in_ts;
+			cutoff_end = 20 * ms_in_ts;
+		} else {
+			cutoff_end = 40 * ms_in_ts;
+			cutoff_start = 120 * ms_in_ts;
+		}
 	}
 
 	void SubmitPacket(UINT64 timestamp, float *data, UINT32 num_frames);

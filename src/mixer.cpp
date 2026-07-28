@@ -123,7 +123,13 @@ void Mixer::Tick()
 	if (start * format.nChannels >= mix.size()) {
 		mix.clear();
 		return;
-	} else if (end - start == 0)
+	}
+
+	// end < start would make (end - start) wrap around as size_t and hand OBS a
+	// gigantic frame count read past the buffer. It cannot happen while
+	// cutoff_start > cutoff_end, but that invariant now depends on a runtime
+	// setting, so do not leave it to trust.
+	if (end <= start)
 		return;
 
 	obs_source_audio obs_packet = {
