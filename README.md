@@ -1,7 +1,5 @@
 # win-capture-audio
 
-An OBS plugin similar to OBS's win-capture/game-capture that allows for audio capture from specific applications, rather than the system's audio as a whole.
-
 This is a modernized fork of [bozbez/win-capture-audio](https://github.com/bozbez/win-capture-audio) (unmaintained since 2022), updated to build and run against **OBS Studio 28–32** on current Windows 10/11, with a substantial number of threading, COM-lifetime and audio-timing fixes.
 
 ## Features
