@@ -2,11 +2,26 @@
 
 An OBS plugin similar to OBS's win-capture/game-capture that allows for audio capture from specific applications, rather than the system's audio as a whole.
 
-Compared to OBS's built-in "Application Audio Capture (BETA)" source, this plugin captures by **executable name** (no window required, so it survives the app restarting — wildcards like `League*.exe` supported), handles **multiple applications** in one source, an **exclude mode**, a **hotkey mode** that captures whatever application is in the foreground, and a selectable **low-latency mode** for single-application capture.
+This is a modernized fork of [bozbez/win-capture-audio](https://github.com/bozbez/win-capture-audio) (unmaintained since 2022), updated to build and run against **OBS Studio 28–32** on current Windows 10/11, with a substantial number of threading, COM-lifetime and audio-timing fixes.
 
-Internally it uses [ActivateAudioInterfaceAsync](https://learn.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-activateaudiointerfaceasync) with [AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS](https://learn.microsoft.com/en-us/windows/win32/api/audioclientactivationparams/ns-audioclientactivationparams-audioclient_process_loopback_params).
+## Features
 
-This is a modernized fork of [bozbez/win-capture-audio](https://github.com/bozbez/win-capture-audio) (unmaintained since 2022), updated to build and run against **OBS Studio 32.x** on current Windows 10/11, with a substantial number of threading, COM-lifetime and audio-timing fixes.
+- **Capture by executable name.** Pick applications by their `.exe`, not by a window, so capture keeps working when the application is restarted. Names are case-insensitive and accept wildcards (`League*.exe`).
+- **Several applications in one source.** Their audio is mixed and timestamp-aligned into a single OBS source.
+- **Exclude mode.** Capture *everything except* the listed applications — the usual way to keep music off a recording track while it still plays on stream.
+- **Hotkey mode.** Capture whichever application is in the foreground when you press a hotkey, and release it with another.
+- **Latency setting.** Lower the mixer's alignment window when capturing a single application; keep the safer margin when mixing several.
+- **Live status and refresh.** The properties dialog shows what is actually being captured, and the active-session list can be refreshed without reopening it.
+- **Automatic re-attach.** Capture recovers on its own when an application restarts or the audio device changes.
+- **15 languages.**
+
+### Compared to OBS's built-in "Application Audio Capture (BETA)"
+
+OBS ships its own process-loopback source. It requires selecting a **window** and stops when that window disappears, and each source captures exactly one application. This plugin selects by executable, survives restarts, handles multiple applications and the exclude/hotkey modes above.
+
+Internally both use [ActivateAudioInterfaceAsync](https://learn.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-activateaudiointerfaceasync) with [AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS](https://learn.microsoft.com/en-us/windows/win32/api/audioclientactivationparams/ns-audioclientactivationparams-audioclient_process_loopback_params).
+
+> **Note:** the exclude mode replaces OBS's "Desktop Audio" source rather than filtering it — no plugin can remove an application from Desktop Audio, since that source captures the mixed output of the sound device. Add an exclude-mode source and disable Desktop Audio in Settings → Audio.
 
 ## Requirements
 
