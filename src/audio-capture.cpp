@@ -167,39 +167,52 @@ AudioCapture::DeDuplicateCaptureList(const std::set<DWORD> &pids,
 	return roots;
 }
 
-void AudioCapture::StartCapture(const std::set<DWORD> &new_pids)
+void AudioCapture::StartCapture(const std::set<DWORD> &new_pids, bool exclude)
 {
+	// Switching between include and exclude means every existing helper is the
+	// wrong kind; drop them all before registering the new ones.
+	if (exclude != capture_exclude)
+		StopCapture();
+
 	for (auto pid : pids) {
 		if (new_pids.contains(pid))
 			continue;
 
-		helper_manager.UnRegisterMixer(pid, &mixer.value());
+		helper_manager.UnRegisterMixer(pid, capture_exclude, &mixer.value());
 	}
 
 	for (auto new_pid : new_pids) {
 		if (pids.contains(new_pid))
 			continue;
 
-		helper_manager.RegisterMixer(new_pid, &mixer.value());
+		helper_manager.RegisterMixer(new_pid, exclude, &mixer.value());
 	}
 
 	auto lock = pids_section.lock();
 	pids = new_pids;
+	capture_exclude = exclude;
 }
 
 void AudioCapture::StopCapture()
 {
 	for (auto pid : pids)
-		helper_manager.UnRegisterMixer(pid, &mixer.value());
+		helper_manager.UnRegisterMixer(pid, capture_exclude, &mixer.value());
 
 	auto lock = pids_section.lock();
 	pids.clear();
+	capture_exclude = false;
 }
 
 std::set<DWORD> AudioCapture::GetCapturedPids()
 {
 	auto lock = pids_section.lock();
 	return pids;
+}
+
+bool AudioCapture::IsExcludeCapture()
+{
+	auto lock = pids_section.lock();
+	return capture_exclude;
 }
 
 void AudioCapture::WorkerUpdate()
@@ -222,7 +235,7 @@ void AudioCapture::WorkerUpdate()
 			return;
 		}
 
-		StartCapture({pid});
+		StartCapture({pid}, false);
 		return;
 	}
 
@@ -246,13 +259,31 @@ void AudioCapture::WorkerUpdate()
 		capture_pids.insert(key.pid);
 	}
 
+	if (config.exclude && exclude_pids.size() > 0) {
+		// Windows can capture "everything except this process tree" natively,
+		// with a single client. That is both cheaper than one helper per
+		// application and more complete: it also covers system sounds and
+		// anything that never shows up as a tracked audio session.
+		//
+		// The API takes a single target, so this only applies when the
+		// excluded executables resolve to one process tree; otherwise fall
+		// back to enumerating everything that should be captured.
+		auto excluded_roots = AudioCapture::DeDuplicateCaptureList(exclude_pids);
+
+		if (excluded_roots.size() == 1) {
+			StartCapture(excluded_roots, true);
+			return;
+		}
+	}
+
 	if (capture_pids.size() == 0) {
 		StopCapture();
 		return;
 	}
 
 	StartCapture(AudioCapture::DeDuplicateCaptureList(
-		capture_pids, config.exclude ? exclude_pids : std::set<DWORD>()));
+			     capture_pids, config.exclude ? exclude_pids : std::set<DWORD>()),
+		     false);
 }
 
 bool AudioCapture::Tick(const MSG &msg)
@@ -668,7 +699,7 @@ void AudioCapture::UpdateStatus(obs_properties_t *ps)
 			names.insert(executable);
 	}
 
-	std::string text = TEXT_STATUS_CAPTURING;
+	std::string text = IsExcludeCapture() ? TEXT_STATUS_EXCLUDING : TEXT_STATUS_CAPTURING;
 	if (names.empty()) {
 		// Hotkey mode can capture a window whose process has no audio
 		// session entry yet.

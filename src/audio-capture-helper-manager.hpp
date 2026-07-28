@@ -16,7 +16,16 @@
 class AudioCaptureHelperManager {
 private:
 	wil::critical_section helpers_section;
-	std::unordered_map<DWORD, AudioCaptureHelper> helpers;
+
+	// Keyed by pid *and* mode: the same process can legitimately be the target
+	// of an include capture (one source captures Spotify) and of an exclude
+	// capture (another source captures everything but Spotify) at once.
+	std::unordered_map<uint64_t, AudioCaptureHelper> helpers;
+
+	static uint64_t MakeKey(DWORD pid, bool exclude)
+	{
+		return static_cast<uint64_t>(pid) | (exclude ? (1ull << 32) : 0ull);
+	}
 
 public:
 	AudioCaptureHelperManager() = default;
@@ -55,7 +64,7 @@ public:
 		return format;
 	}
 
-	void RegisterMixer(DWORD pid, Mixer *mixer)
+	void RegisterMixer(DWORD pid, bool exclude, Mixer *mixer)
 	{
 		auto lock = helpers_section.lock();
 
@@ -63,7 +72,8 @@ public:
 			// The helper must produce what this mixer expects, so take the
 			// format from the mixer rather than from a fresh query.
 			auto format = mixer->GetFormat();
-			auto [it, inserted] = helpers.try_emplace(pid, mixer, format, pid);
+			auto [it, inserted] =
+				helpers.try_emplace(MakeKey(pid, exclude), mixer, format, pid, exclude);
 			if (!inserted) {
 				// Sources created before and after an OBS audio-settings
 				// change can carry different formats; the shared helper
@@ -86,11 +96,11 @@ public:
 		}
 	};
 
-	void UnRegisterMixer(DWORD pid, Mixer *mixer)
+	void UnRegisterMixer(DWORD pid, bool exclude, Mixer *mixer)
 	{
 		auto lock = helpers_section.lock();
 
-		auto it = helpers.find(pid);
+		auto it = helpers.find(MakeKey(pid, exclude));
 		if (it == helpers.end())
 			return;
 

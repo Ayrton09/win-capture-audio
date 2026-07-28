@@ -15,7 +15,8 @@
 
 AUDIOCLIENT_ACTIVATION_PARAMS AudioCaptureHelper::GetParams()
 {
-	auto mode = PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
+	auto mode = exclude ? PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE
+			    : PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
 
 	return {
 		.ActivationType = AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK,
@@ -226,8 +227,8 @@ void AudioCaptureHelper::CaptureSafe()
 	}
 }
 
-AudioCaptureHelper::AudioCaptureHelper(Mixer *mixer, WAVEFORMATEX format, DWORD pid)
-	: pid{pid}, mixers{mixer}, format{format}
+AudioCaptureHelper::AudioCaptureHelper(Mixer *mixer, WAVEFORMATEX format, DWORD pid, bool exclude)
+	: pid{pid}, exclude{exclude}, mixers{mixer}, format{format}
 {
 	for (auto &event : events)
 		event.create();

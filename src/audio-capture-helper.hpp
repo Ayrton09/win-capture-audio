@@ -58,6 +58,12 @@ class AudioCaptureHelper {
 private:
 	DWORD pid;
 
+	// false: capture this process tree (INCLUDE_TARGET_PROCESS_TREE).
+	// true:  capture everything *except* this process tree
+	//        (EXCLUDE_TARGET_PROCESS_TREE) - one client covers the whole
+	//        system, which is what "capture all audio except X" needs.
+	bool exclude;
+
 	wil::critical_section mixers_section;
 	std::set<Mixer *> mixers;
 
@@ -84,9 +90,10 @@ private:
 
 public:
 	DWORD GetPid() { return pid; }
+	bool IsExclude() { return exclude; }
 	WAVEFORMATEX GetFormat() { return format; }
 
-	AudioCaptureHelper(Mixer *mixer, WAVEFORMATEX format, DWORD pid);
+	AudioCaptureHelper(Mixer *mixer, WAVEFORMATEX format, DWORD pid, bool exclude);
 	~AudioCaptureHelper();
 
 	void RegisterMixer(Mixer *mixer);

@@ -49,6 +49,7 @@
 #define TEXT_LATENCY_NORMAL            obs_module_text("Latency.Normal")
 #define TEXT_LATENCY_LOW               obs_module_text("Latency.Low")
 #define TEXT_STATUS_CAPTURING          obs_module_text("Status.Capturing")
+#define TEXT_STATUS_EXCLUDING          obs_module_text("Status.Excluding")
 #define TEXT_STATUS_NONE               obs_module_text("Status.None")
 
 #define TEXT_HOTKEY_START              obs_module_text("Hotkey.Start")
@@ -94,7 +95,11 @@ private:
 	wil::critical_section pids_section;
 	std::set<DWORD> pids;
 
-	void StartCapture(const std::set<DWORD> &new_pids);
+	// When true, `pids` holds the single process tree being excluded and the
+	// helper captures everything else; otherwise `pids` are captured directly.
+	bool capture_exclude = false;
+
+	void StartCapture(const std::set<DWORD> &new_pids, bool exclude);
 	void StopCapture();
 
 	void WorkerUpdate();
@@ -116,6 +121,7 @@ public:
 	void FillActiveSessionList(obs_property_t *session_list, obs_property_t *session_add);
 	void UpdateStatus(obs_properties_t *ps);
 	std::set<DWORD> GetCapturedPids();
+	bool IsExcludeCapture();
 	std::set<std::string> GetExecutables(obs_data_t *settings);
 
 	bool IsUwpWindow(HWND window);
