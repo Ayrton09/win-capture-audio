@@ -57,6 +57,11 @@ If you have a self-built OBS instead, point `CMAKE_PREFIX_PATH` at it and the us
 
 ## Troubleshooting
 
+- **"Windows protected your PC" when running the installer:** the binaries are not
+  code-signed yet, so SmartScreen has no reputation for them. Choose "More info" →
+  "Run anyway", and verify the download against the `SHA256SUMS.txt` published with
+  each release if you want to be sure it was not tampered with.
+
 - **Source not showing up:** check the OBS log (Help → Log Files) for a `[win-capture-audio]` line. If absent, the DLL is in the wrong directory — see the layout above.
 - **No audio captured:** make sure the target application is actually playing audio and appears in the Windows volume mixer. The capture attaches per audio session; an app that has not opened an audio stream yet has nothing to capture.
 - **Crackling or dropouts:** lower the OBS audio buffering (Settings → Advanced → Audio) or report it with a log.

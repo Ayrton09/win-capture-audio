@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.3.0 — 2026-07-27
+## 2.3.0 — 2026-07-28
 
 Modernization release: builds and runs against OBS Studio 32.x on current Windows 10/11.
 Verified end-to-end against OBS 32.2.1 on Windows 11 25H2 (source created, sessions listed,

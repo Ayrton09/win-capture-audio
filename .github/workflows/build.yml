@@ -76,7 +76,10 @@ jobs:
   # policy slugs below to match the SignPath project configuration.
   sign:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    # Enable by setting the repository variable SIGNPATH_ENABLED to 'true' once the
+    # SignPath project exists and the secrets are in place. Until then this job is
+    # skipped and releases are published unsigned (the release job handles both).
+    if: startsWith(github.ref, 'refs/tags/') && vars.SIGNPATH_ENABLED == 'true'
     runs-on: windows-latest
     steps:
       - name: Submit signing request
@@ -141,4 +144,5 @@ jobs:
             **Install:** run `win-capture-audio-${{ github.ref_name }}-setup.exe` (removes any older version automatically), or extract the zip into `%ProgramData%\obs-studio\plugins\` for portable installs.
 
             SHA-256 checksums are attached as `SHA256SUMS.txt`.
-            ${{ needs.sign.result != 'success' && '> Note: these binaries are unsigned (SignPath signing was not available for this build).' || '' }}
+            ${{ needs.sign.result != 'success' && '
+            > **These binaries are not code-signed yet.** Windows SmartScreen may warn you when running the installer — choose "More info" → "Run anyway". You can verify the download against `SHA256SUMS.txt` in the meantime.' || '' }}
