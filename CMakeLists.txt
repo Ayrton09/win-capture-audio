@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.24)
 
 project(win-capture-audio VERSION 2.3.0 LANGUAGES CXX)
 
-set(PLUGIN_AUTHOR "bozbez")
+# Maintainer of this fork: shown as the publisher in Add/Remove Programs, in the
+# DLL's version resource and in the OBS plugin manager. The original author is
+# credited separately (and in every source file's copyright header, per GPL-2.0).
+set(PLUGIN_AUTHOR "Ayrton09")
+set(PLUGIN_ORIGINAL_AUTHOR "bozbez")
 set(PLUGIN_URL "https://github.com/Ayrton09/win-capture-audio")
 
 if(NOT WIN32)
@@ -114,6 +118,11 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/generated/plugin-macros.generated.hpp"
     @ONLY)
 
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/version.rc.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/version.rc"
+    @ONLY)
+
 # ---------------------------------------------------------------------------------
 # The plugin
 # ---------------------------------------------------------------------------------
@@ -123,7 +132,8 @@ add_library(win-capture-audio MODULE
     src/audio-capture.cpp
     src/audio-capture-helper.cpp
     src/session-monitor.cpp
-    src/mixer.cpp)
+    src/mixer.cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/version.rc")
 
 target_include_directories(win-capture-audio PRIVATE
     "${WIL_INCLUDE_DIR}"
@@ -147,6 +157,10 @@ target_compile_definitions(win-capture-audio PRIVATE
 
 if(MSVC)
     target_compile_options(win-capture-audio PRIVATE /utf-8 /W3 /permissive-)
+    # The version resource is UTF-8; tell rc.exe so the copyright string survives.
+    target_link_options(win-capture-audio PRIVATE /IGNORE:4098)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/generated/version.rc"
+        PROPERTIES COMPILE_OPTIONS "/nologo")
 endif()
 
 set_target_properties(win-capture-audio PROPERTIES PREFIX "")

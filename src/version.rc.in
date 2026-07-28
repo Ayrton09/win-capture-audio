@@ -1,0 +1,28 @@
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+PRODUCTVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "@PLUGIN_AUTHOR@"
+            VALUE "FileDescription", "Application Audio Output Capture for OBS Studio"
+            VALUE "FileVersion", "@PROJECT_VERSION@"
+            VALUE "InternalName", "win-capture-audio"
+            VALUE "OriginalFilename", "win-capture-audio.dll"
+            VALUE "ProductName", "win-capture-audio"
+            VALUE "ProductVersion", "@PROJECT_VERSION@"
+            VALUE "LegalCopyright", "GPL-2.0. Maintained by @PLUGIN_AUTHOR@. Originally by @PLUGIN_ORIGINAL_AUTHOR@."
+        END
+    END
+
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

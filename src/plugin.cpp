@@ -5,7 +5,7 @@
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("win-capture-audio", "en-GB")
-OBS_MODULE_AUTHOR("bozbez")
+OBS_MODULE_AUTHOR(PLUGIN_AUTHOR)
 
 // Shown by the OBS 32 Plugin Manager.
 MODULE_EXPORT const char *obs_module_name(void)
