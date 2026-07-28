@@ -25,7 +25,7 @@ para eso la firma debe encadenar a una CA en la que Windows confía.
    aparece en `CurrentUser\My`).
 2. **Azure Trusted Signing** (~10 US$/mes): verificación individual u organizacional,
    integración por CLI; buena opción si ya usás Azure.
-3. **SignPath.io – plan open source** (gratis; la ruta elegida para este proyecto): firma en
+3. **SignPath.io – plan open source** (gratis; solicitud enviada, pendiente de aprobación): firma en
    la nube integrada al CI. El workflow ya está preparado en
    `.github/workflows/build.yml` (job `sign`, corre al taggear). Pasos pendientes, una vez
    que el repo esté público en GitHub:
