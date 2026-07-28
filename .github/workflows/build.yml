@@ -127,9 +127,13 @@ jobs:
       - name: Generate checksums
         shell: pwsh
         run: |
-          Get-ChildItem dist -File -Recurse | Get-FileHash -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" } |
-            Out-File dist/SHA256SUMS.txt -Encoding ascii
+          # Collect the hashes first: writing SHA256SUMS.txt into the directory
+          # the pipeline is still enumerating makes Get-FileHash trip over the
+          # file it is being written to.
+          $lines = Get-ChildItem dist -File -Recurse |
+            Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" }
+          Set-Content dist/SHA256SUMS.txt -Value $lines -Encoding ascii
           Get-Content dist/SHA256SUMS.txt
 
       - name: Create draft release
