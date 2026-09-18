@@ -95,8 +95,11 @@ var
 begin
   sUnInstPath := ExpandConstant('Software\Microsoft\Windows\CurrentVersion\Uninstall\{#emit SetupSetting("AppId")}_is1');
   sUnInstallString := '';
-  if not RegQueryStringValue(HKLM, sUnInstPath, 'UninstallString', sUnInstallString) then
-    RegQueryStringValue(HKCU, sUnInstPath, 'UninstallString', sUnInstallString);
+  // Machine-wide hives only. Setup runs elevated and executes this string, and
+  // every release has installed per-machine; a per-user (HKCU) entry can be
+  // written by any unprivileged process and must never be run as administrator.
+  if not RegQueryStringValue(HKLM64, sUnInstPath, 'UninstallString', sUnInstallString) then
+    RegQueryStringValue(HKLM32, sUnInstPath, 'UninstallString', sUnInstallString);
   Result := sUnInstallString;
 end;
 
