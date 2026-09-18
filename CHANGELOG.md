@@ -13,6 +13,14 @@
 - The previous version's uninstaller is now looked up in the machine-wide
   registry hives only. Setup runs elevated and executes that path; a per-user
   entry, which any unprivileged process can write, is no longer honoured.
+- The uninstaller now lives in `Program Files\win-capture-audio` instead of
+  next to the plugin. `%ProgramData%\obs-studio` is created by OBS without
+  elevation and stays owned by the regular user, so an uninstaller stored there
+  could be replaced by any unprivileged process and would then run as
+  administrator on the next upgrade or uninstall. For the same reason, upgrades
+  only run a previous version's uninstaller when it sits under Program Files
+  (2.2.x); 2.3.x installs are upgraded in place and their old uninstaller is
+  removed.
 
 ### Build
 

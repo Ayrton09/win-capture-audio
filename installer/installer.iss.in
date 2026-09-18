@@ -23,6 +23,11 @@ DefaultDirName={commonappdata}\obs-studio\plugins\{#MyAppName}
 ; installed into the OBS root, and inheriting that path would put the modern
 ; layout where OBS cannot load it.
 UsePreviousAppDir=no
+PrivilegesRequired=admin
+; The uninstaller is run elevated (by upgrades and by Windows' "Installed apps"),
+; so it must not live under %ProgramData%\obs-studio: OBS creates that tree
+; unelevated, which leaves it owned by - and replaceable by - the regular user.
+UninstallFilesDir={commonpf}\{#MyAppName}
 DisableDirPage=yes
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
@@ -51,6 +56,9 @@ Source: "@RELEASE_DIR@/*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Type: files;          Name: "{code:GetLegacyObsDir}\obs-plugins\64bit\win-capture-audio.dll"; Check: LegacyObsDirFound
 Type: files;          Name: "{code:GetLegacyObsDir}\obs-plugins\64bit\win-capture-audio.pdb"; Check: LegacyObsDirFound
 Type: filesandordirs; Name: "{code:GetLegacyObsDir}\data\obs-plugins\win-capture-audio";      Check: LegacyObsDirFound
+; Uninstallers that 2.3.0 - 2.3.3 kept next to the plugin (see UninstallFilesDir).
+Type: files;          Name: "{app}\unins*.exe"
+Type: files;          Name: "{app}\unins*.dat"
 
 [Icons]
 Name: "{group}\{cm:ProgramOnTheWeb,{#MyAppName}}"; Filename: "{#MyAppURL}"
@@ -103,6 +111,19 @@ begin
   Result := sUnInstallString;
 end;
 
+// Only Program Files is writable by administrators alone. 2.2.x installed there
+// and needs its uninstaller run to remove the old layout; later versions are
+// simply upgraded in place, so their uninstaller is never executed from the
+// user-writable plugin directory.
+function IsTrustedUninstaller(Path: String): Boolean;
+var
+  sPath: String;
+begin
+  sPath := Lowercase(ExpandFileName(Path));
+  Result := (Pos(Lowercase(ExpandConstant('{commonpf64}\')), sPath) = 1) or
+            (Pos(Lowercase(ExpandConstant('{commonpf32}\')), sPath) = 1);
+end;
+
 function IsUpgrade(): Boolean;
 begin
   Result := (GetUninstallString() <> '');
@@ -121,7 +142,9 @@ begin
   sUnInstallString := GetUninstallString();
   if sUnInstallString <> '' then begin
     sUnInstallString := RemoveQuotes(sUnInstallString);
-    if Exec(sUnInstallString, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES','', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
+    if not IsTrustedUninstaller(sUnInstallString) then
+      Result := 1
+    else if Exec(sUnInstallString, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES','', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
       Result := 3
     else
       Result := 2;
