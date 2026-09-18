@@ -25,10 +25,8 @@ env:
 jobs:
   build:
     runs-on: windows-latest
-    outputs:
-      artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           submodules: recursive
 
@@ -75,63 +73,23 @@ jobs:
           Copy-Item build/RelWithDebInfo/win-capture-audio.pdb dist/ -ErrorAction SilentlyContinue
           Get-ChildItem dist -File | Get-FileHash -Algorithm SHA256 | Format-List Path, Hash
 
-      - name: Upload unsigned artifact
-        id: upload-unsigned
-        uses: actions/upload-artifact@v4
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: win-capture-audio-${{ github.sha }}
           path: dist/
 
-  # Code signing via SignPath.io (free for open source).
-  # Activates once the SignPath OSS application is approved and these repository
-  # secrets exist: SIGNPATH_API_TOKEN, SIGNPATH_ORG_ID. Update the project /
-  # policy slugs below to match the SignPath project configuration.
-  sign:
-    needs: build
-    # Enable by setting the repository variable SIGNPATH_ENABLED to 'true' once the
-    # SignPath project exists and the secrets are in place. Until then this job is
-    # skipped and releases are published unsigned (the release job handles both).
-    if: startsWith(github.ref, 'refs/tags/') && vars.SIGNPATH_ENABLED == 'true'
-    runs-on: windows-latest
-    steps:
-      - name: Submit signing request
-        uses: signpath/github-action-submit-signing-request@v1
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ secrets.SIGNPATH_ORG_ID }}
-          project-slug: win-capture-audio
-          signing-policy-slug: release-signing
-          github-artifact-id: ${{ needs.build.outputs.artifact-id }}
-          wait-for-completion: true
-          output-artifact-directory: signed
-
-      - name: Upload signed artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: win-capture-audio-signed
-          path: signed/
-
   # Draft a GitHub Release on every tag with the artifacts and their checksums.
-  # Uses the SignPath-signed artifacts when signing succeeded, the unsigned CI
-  # build otherwise (so releases still work before SignPath approval). The
-  # release is created as a DRAFT: review the notes, then publish manually.
+  # The release is created as a DRAFT: review the notes, then publish manually.
   release:
-    needs: [build, sign]
-    if: ${{ always() && startsWith(github.ref, 'refs/tags/') && needs.build.result == 'success' }}
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
     permissions:
       contents: write
     steps:
-      - name: Download signed artifact
-        if: needs.sign.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: win-capture-audio-signed
-          path: dist
-
-      - name: Download unsigned artifact
-        if: needs.sign.result != 'success'
-        uses: actions/download-artifact@v4
+      - name: Download build artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: win-capture-audio-${{ github.sha }}
           path: dist
@@ -149,7 +107,7 @@ jobs:
           Get-Content dist/SHA256SUMS.txt
 
       - name: Create draft release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           draft: true
           name: win-capture-audio ${{ github.ref_name }}
@@ -160,5 +118,5 @@ jobs:
             **Install:** run `win-capture-audio-${{ github.ref_name }}-setup.exe` (removes any older version automatically), or extract the zip into `%ProgramData%\obs-studio\plugins\` for portable installs.
 
             SHA-256 checksums are attached as `SHA256SUMS.txt`.
-            ${{ needs.sign.result != 'success' && '
-            > **These binaries are not code-signed yet.** Windows SmartScreen may warn you when running the installer — choose "More info" → "Run anyway". You can verify the download against `SHA256SUMS.txt` in the meantime.' || '' }}
+
+            > **These binaries are not code-signed.** Windows SmartScreen may warn you when running the installer — choose "More info" → "Run anyway". You can verify the download against `SHA256SUMS.txt`.
