@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Reference leak in the executable list.** Every entry of the list was
+  fetched from OBS and never released, leaking one small settings object per
+  entry on each source update and each time the properties dialog refreshed.
+
+### Installer
+
+- The previous version's uninstaller is now looked up in the machine-wide
+  registry hives only. Setup runs elevated and executes that path; a per-user
+  entry, which any unprivileged process can write, is no longer honoured.
+
+### Build
+
+- CI actions are pinned to exact commits instead of moving tags.
+- Removed an unused CI job and its helper script.
+
 ## 2.3.3 — 2026-08-25
 
 ### New
