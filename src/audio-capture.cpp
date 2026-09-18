@@ -694,6 +694,8 @@ std::set<std::string> AudioCapture::GetExecutables(obs_data_t *settings)
 		auto *executable = obs_data_get_string(item, "value");
 
 		executables.insert(std::string(executable));
+		// obs_data_array_item hands out a reference.
+		obs_data_release(item);
 	}
 
 	obs_data_array_release(executable_list_array);
