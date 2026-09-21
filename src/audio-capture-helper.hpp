@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <array>
+#include <atomic>
 #include <functional>
 #include <thread>
 #include <set>
@@ -73,6 +74,11 @@ private:
 	WAVEFORMATEX format;
 	std::vector<float> silence_buffer;
 
+	// S_OK while the stream is running (or has not failed yet); otherwise the
+	// HRESULT of the most recent failed attempt. Read by the properties dialog
+	// so a capture that keeps failing is visible outside the log.
+	std::atomic<HRESULT> last_error{S_OK};
+
 	std::array<wil::unique_event, HelperEvents::Count> events;
 	std::thread capture_thread;
 
@@ -92,6 +98,7 @@ public:
 	DWORD GetPid() { return pid; }
 	bool IsExclude() { return exclude; }
 	WAVEFORMATEX GetFormat() { return format; }
+	HRESULT GetLastError() { return last_error.load(std::memory_order_relaxed); }
 
 	AudioCaptureHelper(Mixer *mixer, WAVEFORMATEX format, DWORD pid, bool exclude);
 	~AudioCaptureHelper();

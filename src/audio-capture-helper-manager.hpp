@@ -104,6 +104,16 @@ public:
 		}
 	};
 
+	// S_OK when the helper is healthy or does not exist (not registered yet,
+	// or already torn down); the failing HRESULT otherwise.
+	HRESULT GetHelperError(DWORD pid, bool exclude)
+	{
+		auto lock = helpers_section.lock();
+
+		auto it = helpers.find(MakeKey(pid, exclude));
+		return it == helpers.end() ? S_OK : it->second.GetLastError();
+	}
+
 	void UnRegisterMixer(DWORD pid, bool exclude, Mixer *mixer)
 	{
 		auto lock = helpers_section.lock();

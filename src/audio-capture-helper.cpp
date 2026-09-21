@@ -185,6 +185,7 @@ void AudioCaptureHelper::Capture()
 {
 	InitCapture();
 	THROW_IF_FAILED(client->Start());
+	last_error = S_OK;
 
 	bool shutdown = false;
 	while (!shutdown) {
@@ -240,10 +241,12 @@ void AudioCaptureHelper::CaptureSafe()
 			Capture();
 			return;
 		} catch (const wil::ResultException &e) {
+			last_error = e.GetErrorCode();
 			error("capture failed for pid %lu: %s", pid, e.what());
 		} catch (const std::exception &e) {
 			// Anything escaping this thread would std::terminate all of
 			// OBS; keep the net as wide as the session monitor's.
+			last_error = E_FAIL;
 			error("capture failed for pid %lu: %s", pid, e.what());
 		}
 

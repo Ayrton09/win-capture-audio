@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### New
+
+- **Capture failures are shown in the properties dialog.** A capture that keeps
+  failing used to be visible only in the OBS log, so the source just sat at
+  "Not capturing" with no explanation. The status line now lists the failing
+  targets with their error code ("Capture failing for: game.exe (0x88890004)"),
+  which is also what a bug report needs.
+- **Unsupported Windows versions are called out.** On builds older than
+  Windows 10 2004, where per-application capture does not exist, the status
+  line and the log say so instead of silently never capturing.
+  Both messages are localized in all 15 languages.
+
 ### Fixed
 
 - **Reference leak in the executable list.** Every entry of the list was

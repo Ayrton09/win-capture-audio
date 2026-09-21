@@ -36,6 +36,9 @@
 
 AudioCaptureHelperManager helper_manager;
 
+// Set by obs_module_load (plugin.cpp).
+extern bool windows_supports_process_loopback;
+
 // Case folding must be Unicode-aware: executable names are UTF-8 and Windows
 // filenames case-fold beyond ASCII, so a byte-wise tolower() would fail to
 // match names containing accented or non-Latin letters.
@@ -787,6 +790,7 @@ void AudioCapture::UpdateStatus(obs_properties_t *ps)
 	auto captured = GetCapturedPids();
 	if (captured.empty()) {
 		std::string text = TEXT_STATUS_NONE;
+		AppendCaptureErrors(text, captured, false, sessions);
 		AppendUnmatchedPatterns(text, sessions);
 		obs_property_set_description(status, text.c_str());
 		return;
@@ -827,7 +831,8 @@ void AudioCapture::UpdateStatus(obs_properties_t *ps)
 		}
 	}
 
-	std::string text = IsExcludeCapture() ? TEXT_STATUS_EXCLUDING : TEXT_STATUS_CAPTURING;
+	const bool exclude = IsExcludeCapture();
+	std::string text = exclude ? TEXT_STATUS_EXCLUDING : TEXT_STATUS_CAPTURING;
 	if (names.empty()) {
 		// Protected process (OpenProcess denied): fall back to the count.
 		text += std::format(" {} pid(s)", captured.size());
@@ -840,8 +845,53 @@ void AudioCapture::UpdateStatus(obs_properties_t *ps)
 		}
 	}
 
+	AppendCaptureErrors(text, captured, exclude, sessions);
 	AppendUnmatchedPatterns(text, sessions);
 	obs_property_set_description(status, text.c_str());
+}
+
+// A capture that keeps failing used to be visible only in the log, leaving
+// "it does not capture" with nothing to go on. Surface the failing targets
+// and their HRESULT - the code is what a bug report needs - and say so
+// outright when this Windows build predates process loopback.
+void AudioCapture::AppendCaptureErrors(std::string &text, const std::set<DWORD> &captured,
+				       bool exclude,
+				       const std::unordered_map<SessionKey, std::string> &sessions)
+{
+	if (!windows_supports_process_loopback) {
+		text += std::format("\n{}", TEXT_STATUS_OLD_WINDOWS);
+		return;
+	}
+
+	std::string failing;
+	for (auto pid : captured) {
+		HRESULT hr = helper_manager.GetHelperError(pid, exclude);
+		if (SUCCEEDED(hr))
+			continue;
+
+		// In exclude mode the pid is the tree being left out, not what
+		// is being captured: naming it would read as the wrong culprit.
+		std::string name;
+		if (!exclude) {
+			for (auto &[key, executable] : sessions) {
+				if (key.pid == pid) {
+					name = executable;
+					break;
+				}
+			}
+
+			if (name.empty())
+				name = std::format("pid {}", pid);
+		}
+
+		failing += failing.empty() ? "" : ", ";
+		failing += name.empty() ? std::format("0x{:08X}", static_cast<unsigned long>(hr))
+					: std::format("{} (0x{:08X})", name,
+						      static_cast<unsigned long>(hr));
+	}
+
+	if (!failing.empty())
+		text += std::format("\n{} {}", TEXT_STATUS_ERROR, failing);
 }
 
 // A typo'd executable name fails silently forever - the list accepts it and

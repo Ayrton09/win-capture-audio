@@ -53,6 +53,8 @@
 #define TEXT_STATUS_EXCLUDING          obs_module_text("Status.Excluding")
 #define TEXT_STATUS_NONE               obs_module_text("Status.None")
 #define TEXT_STATUS_NO_MATCH           obs_module_text("Status.NoMatch")
+#define TEXT_STATUS_ERROR              obs_module_text("Status.Error")
+#define TEXT_STATUS_OLD_WINDOWS        obs_module_text("Status.OldWindows")
 
 #define TEXT_HOTKEY_START              obs_module_text("Hotkey.Start")
 #define TEXT_HOTKEY_STOP               obs_module_text("Hotkey.Stop")
@@ -125,6 +127,8 @@ public:
 	void UpdateStatus(obs_properties_t *ps);
 	std::set<DWORD> GetCapturedPids();
 	bool IsExcludeCapture();
+	void AppendCaptureErrors(std::string &text, const std::set<DWORD> &captured, bool exclude,
+				 const std::unordered_map<SessionKey, std::string> &sessions);
 	std::set<std::string> GetExecutables(obs_data_t *settings);
 	std::vector<std::string> GetAddableExecutables(obs_data_t *settings);
 
