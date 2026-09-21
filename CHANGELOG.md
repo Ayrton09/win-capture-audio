@@ -16,6 +16,10 @@
 
 ### Fixed
 
+- **No more error spam when the Windows audio service restarts.** The service
+  re-announces every endpoint it knows, unplugged ones included, and each of
+  those logged a "skipping device" error. Absent endpoints are now ignored
+  until they actually become active.
 - **Reference leak in the executable list.** Every entry of the list was
   fetched from OBS and never released, leaking one small settings object per
   entry on each source update and each time the properties dialog refreshed.

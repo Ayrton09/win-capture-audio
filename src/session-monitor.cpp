@@ -230,8 +230,20 @@ void SessionMonitor::AddDevice(MSG msg)
 	EDataFlow data_flow;
 	THROW_IF_FAILED(endpoint->GetDataFlow(&data_flow));
 
-	if (data_flow == eRender)
-		AddDevice(*id, device);
+	if (data_flow != eRender)
+		return;
+
+	// OnDeviceAdded fires for every endpoint the audio service knows about,
+	// including unplugged ones (all of them at once when the service
+	// restarts). Those cannot be activated; skip them quietly instead of
+	// logging an error per absent device. A later OnDeviceStateChanged to
+	// ACTIVE brings them back through this same path.
+	DWORD state = 0;
+	THROW_IF_FAILED(device->GetState(&state));
+	if (state != DEVICE_STATE_ACTIVE)
+		return;
+
+	AddDevice(*id, device);
 }
 
 void SessionMonitor::AddDevice(std::wstring id, wil::com_ptr<IMMDevice> device)
