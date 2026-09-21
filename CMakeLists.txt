@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(win-capture-audio VERSION 2.3.3 LANGUAGES CXX)
+project(win-capture-audio VERSION 2.3.4 LANGUAGES CXX)
 
 # Maintainer of this fork: shown as the publisher in Add/Remove Programs, in the
 # DLL's version resource and in the OBS plugin manager. The original author is
