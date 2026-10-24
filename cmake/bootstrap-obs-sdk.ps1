@@ -150,7 +150,10 @@ try {
 # Extract libobs/ only. The full tree contains symlinks (.github/scripts/*, build-aux/*)
 # that Windows tar cannot create without developer mode / elevation, and we need none of them.
 Write-Step "Extracting libobs/"
-tar -xzf $tarball -C $tmpDir "obs-studio-$ObsVersion/libobs"
+# Call Windows' own bsdtar explicitly: from Git Bash (or any shell with Git's
+# usr\bin first on PATH) plain `tar` is GNU tar, which reads "C:\..." as a
+# remote host and fails.
+& "$env:SystemRoot\System32\tar.exe" -xzf $tarball -C $tmpDir "obs-studio-$ObsVersion/libobs"
 if ($LASTEXITCODE -ne 0) { throw "tar failed to extract $tarball" }
 
 $srcRoot = Get-ChildItem $tmpDir -Directory | Where-Object { $_.Name -like 'obs-studio-*' } | Select-Object -First 1
