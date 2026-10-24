@@ -399,8 +399,11 @@ void AudioCapture::Update(obs_data_t *settings)
 	auto lock = config_section.lock();
 	// The captured window is runtime state set by the hotkey, not a setting:
 	// carry it across settings updates, or merely opening the properties
-	// dialog silently stops an active hotkey capture.
-	new_config.hotkey_window = config.hotkey_window;
+	// dialog silently stops an active hotkey capture. Only while the source
+	// stays in hotkey mode, though: leaving it ends that capture, and coming
+	// back must wait for a fresh Start press.
+	if (config.mode == MODE_HOTKEY && new_config.mode == MODE_HOTKEY)
+		new_config.hotkey_window = config.hotkey_window;
 	config = std::move(new_config);
 	lock.reset();
 
@@ -446,18 +449,16 @@ HWND AudioCapture::GetUwpActualWindow(HWND parent_window)
 
 void AudioCapture::HotkeyStart()
 {
-	auto lock = config_section.lock();
-	auto config_copy = this->config;
-	lock.reset();
-
-	if (config_copy.mode != MODE_HOTKEY)
-		return;
-
 	auto window = GetForegroundWindow();
 	if (AudioCapture::IsUwpWindow(window))
 		window = AudioCapture::GetUwpActualWindow(window);
 
-	lock = config_section.lock();
+	// Check the mode under the same lock that stores the window, so a
+	// concurrent switch away from hotkey mode cannot be undone by us.
+	auto lock = config_section.lock();
+	if (config.mode != MODE_HOTKEY)
+		return;
+
 	config.hotkey_window = window;
 	lock.reset();
 
