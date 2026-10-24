@@ -176,7 +176,8 @@ set_target_properties(win-capture-audio PROPERTIES PREFIX "")
 #
 # The legacy layout inside the OBS installation directory
 #   <obs>/obs-plugins/64bit/<name>.dll  +  <obs>/data/obs-plugins/<name>/...
-# still works and is what the Inno Setup installer produces.
+# still works, but nothing produces it any more; the installer removes it on
+# upgrade so it cannot shadow the modern install.
 # ---------------------------------------------------------------------------------
 
 # Staged modern plugin layout: consumed by the Inno Setup installer and zipped
