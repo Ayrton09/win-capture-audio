@@ -37,8 +37,13 @@ jobs:
 
       - name: Download OBS Studio ${{ env.OBS_VERSION }} (for headers + obs.dll)
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          $release = Invoke-RestMethod "https://api.github.com/repos/obsproject/obs-studio/releases/tags/$env:OBS_VERSION"
+          # Authenticated: anonymous API calls share a small per-IP limit
+          # with every other job on the runner's address.
+          $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN" }
+          $release = Invoke-RestMethod "https://api.github.com/repos/obsproject/obs-studio/releases/tags/$env:OBS_VERSION" -Headers $headers
           # Naming changed across releases: 28.x ships "OBS-Studio-28.0-Full-x64.zip",
           # newer versions ship "OBS-Studio-<ver>-Windows.zip".
           $asset = $release.assets | Where-Object { $_.name -match '(Windows(-x64)?|Full-x64)\.zip$' } | Select-Object -First 1
@@ -67,6 +72,11 @@ jobs:
           $m = Select-String CMakeLists.txt -Pattern 'project\(win-capture-audio VERSION ([0-9.]+)'
           if (-not $m) { throw "Could not read the project version from CMakeLists.txt" }
           $version = $m.Matches[0].Groups[1].Value
+          # A tag pushed before the version bump would publish files named
+          # after the previous release under the new tag's name.
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne $version) {
+            throw "Tag $env:GITHUB_REF_NAME does not match project version $version"
+          }
           New-Item -ItemType Directory -Force stage/win-capture-audio | Out-Null
           Copy-Item build/release/* stage/win-capture-audio -Recurse
           Compress-Archive stage/win-capture-audio "dist/win-capture-audio-$version.zip"
@@ -83,6 +93,8 @@ jobs:
         with:
           name: win-capture-audio-${{ github.sha }}
           path: dist/
+          # "Re-run all jobs" uploads again under the same name.
+          overwrite: true
 
   # Draft a GitHub Release on every tag with the artifacts and their checksums.
   # The release is created as a DRAFT: review the notes, then publish manually.
