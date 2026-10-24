@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **OBS could hang when a source was removed or OBS was closed.** If a source
+  went away while its capture was still connecting to the audio service (at
+  startup, or during a retry), the stop request could be lost and the capture
+  thread kept waiting forever, freezing OBS. The stop request now always gets
+  through.
+- **Sub-sample timing errors in the mixer.** Converting timestamps to frame
+  positions rounded down, so a packet whose timestamp sat a fraction under the
+  exact frame time was placed one frame off: one sample summed twice and a
+  zero left behind, a faint click. Positions now round to the nearest frame.
+- **Sessions that ended too quickly could stay listed forever.** An audio
+  session that expired before it was registered never reported its end, so it
+  lingered in the session list (and in captures) until OBS restarted.
+- **One unreadable audio device no longer disables session tracking.** A
+  device that failed while being read at startup stopped the whole session
+  monitor; it is now skipped like any other broken endpoint.
+- **Hotkey mode no longer resumes an old capture after a mode change.**
+  Switching a source out of hotkey mode and back used to pick up the last
+  captured window again without pressing Start.
+- The "MMCSS registration failed" log line reported 0 instead of the actual
+  Windows error code.
+
+### Installer
+
+- If the previous version's uninstaller fails (for example because OBS is
+  still running), setup now says so instead of carrying on silently.
+
+### Build
+
+- The CI workflow's token is read-only by default and is no longer kept in
+  the checkout.
+
 ## 2.3.4 — 2026-09-20
 
 ### New
