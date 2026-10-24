@@ -155,8 +155,11 @@ begin
       // holds the Windows error); a non-zero exit code, e.g. a file held open
       // by OBS, means the old version is still there.
       Log(Format('Previous uninstaller failed: %d', [iResultCode]));
-      SuppressibleMsgBox(FmtMessage(CustomMessage('OldUninstallFailed'), [IntToStr(iResultCode)]),
-        mbError, MB_OK, IDOK);
+      // Never block an unattended install (/VERYSILENT without
+      // /SUPPRESSMSGBOXES would wait on this box); the log has it.
+      if not WizardSilent() then
+        MsgBox(FmtMessage(CustomMessage('OldUninstallFailed'), [IntToStr(iResultCode)]),
+          mbError, MB_OK);
       Result := 2;
     end;
   end else
