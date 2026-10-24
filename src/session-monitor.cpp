@@ -178,13 +178,19 @@ void SessionMonitor::Init()
 	THROW_IF_FAILED(collection->GetCount(&num_devices));
 
 	for (UINT i = 0; i < num_devices; ++i) {
-		wil::com_ptr<IMMDevice> device;
-		THROW_IF_FAILED(collection->Item(i, device.put()));
+		// Same rule as AddDevice: one endpoint that cannot be read must not
+		// abort the enumeration and leave every other device unmonitored.
+		try {
+			wil::com_ptr<IMMDevice> device;
+			THROW_IF_FAILED(collection->Item(i, device.put()));
 
-		wil::unique_cotaskmem_string device_id;
-		THROW_IF_FAILED(device->GetId(device_id.put()));
+			wil::unique_cotaskmem_string device_id;
+			THROW_IF_FAILED(device->GetId(device_id.put()));
 
-		AddDevice(std::wstring(device_id.get()), device);
+			AddDevice(std::wstring(device_id.get()), device);
+		} catch (const wil::ResultException &e) {
+			error("skipping device %u: %s", i, e.what());
+		}
 	}
 }
 
@@ -305,6 +311,17 @@ void SessionMonitor::AddSession(MSG msg)
 
 		if (!inserted)
 			return;
+
+		// A session can expire while its SessionAdded message is still
+		// queued; its expiry callback then never fires and it would stay
+		// listed for good. Checking after the watcher registered closes the
+		// gap: a later expiry is reported through the callback.
+		AudioSessionState state;
+		if (SUCCEEDED(session_control->GetState(&state)) &&
+		    state == AudioSessionStateExpired) {
+			session_watchers.erase(it);
+			return;
+		}
 
 		executable = it->second.GetExecutable();
 	} catch (wil::ResultException e) {
