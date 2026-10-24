@@ -52,7 +52,11 @@ void Mixer::AdoptTimeline(UINT64 timestamp)
 
 void Mixer::ProcessInput(UINT64 input_timestamp, std::vector<float> &input_buffer)
 {
-	if (mix.size() == 0) {
+	// An empty mix normally starts a fresh timeline at the packet - except
+	// for a packet older than what Tick has already handed to OBS (it drained
+	// the mix just before this one arrived): adopting that would rewind OBS's
+	// timestamps, so trim it against the frontier like any late packet below.
+	if (mix.size() == 0 && input_timestamp >= mix_timestamp) {
 		AdoptTimeline(input_timestamp);
 		mix = std::move(input_buffer);
 
