@@ -91,7 +91,7 @@ private:
 	void ForwardToMixers(UINT64 qpc_position, BYTE *data, UINT32 num_frames);
 	void ForwardPacket();
 
-	void Capture();
+	void Capture(ULONGLONG &stream_started);
 	void CaptureSafe();
 
 public:

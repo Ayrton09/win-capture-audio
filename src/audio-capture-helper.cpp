@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include <string>
 #include <vector>
 #include <stdexcept>
 
@@ -92,6 +93,8 @@ void AudioCaptureHelper::InitClient()
 	HANDLE waits[] = {completion_handler->event_finished.get(),
 			  events[HelperEvents::Shutdown].get()};
 	auto wait_result = WaitForMultipleObjects(ARRAYSIZE(waits), waits, FALSE, 10000);
+	if (wait_result == WAIT_FAILED)
+		THROW_LAST_ERROR();
 	if (wait_result != WAIT_OBJECT_0)
 		THROW_WIN32(wait_result == WAIT_TIMEOUT ? ERROR_TIMEOUT : ERROR_CANCELLED);
 
@@ -181,10 +184,11 @@ void AudioCaptureHelper::ForwardPacket()
 	}
 }
 
-void AudioCaptureHelper::Capture()
+void AudioCaptureHelper::Capture(ULONGLONG &stream_started)
 {
 	InitCapture();
 	THROW_IF_FAILED(client->Start());
+	stream_started = GetTickCount64();
 	last_error = S_OK;
 
 	bool shutdown = false;
@@ -202,9 +206,11 @@ void AudioCaptureHelper::Capture()
 			break;
 
 		default:
-			error("wait failed with result: %d", event_id);
-			shutdown = true;
-			break;
+			// Surface it like any other stream failure: the retry loop
+			// and the status line both need to see it.
+			if (event_id == WAIT_FAILED)
+				THROW_LAST_ERROR();
+			THROW_WIN32(ERROR_INVALID_STATE);
 		}
 	}
 
@@ -235,29 +241,43 @@ void AudioCaptureHelper::CaptureSafe()
 	constexpr ULONGLONG live_capture_threshold = 10000;
 
 	while (true) {
-		auto capture_start = GetTickCount64();
+		// Set once the stream is running, so time spent in a slow or
+		// timed-out activation never counts as live capture.
+		ULONGLONG stream_started = 0;
+		HRESULT failure = E_FAIL;
+		std::string what;
 
 		try {
-			Capture();
+			Capture(stream_started);
+			// Release the stream here, inside this thread's COM scope,
+			// not later on whichever thread destroys us.
+			client = nullptr;
+			capture_client = nullptr;
 			return;
 		} catch (const wil::ResultException &e) {
-			last_error = e.GetErrorCode();
-			error("capture failed for pid %lu: %s", pid, e.what());
+			failure = e.GetErrorCode();
+			what = e.what();
 		} catch (const std::exception &e) {
 			// Anything escaping this thread would std::terminate all of
 			// OBS; keep the net as wide as the session monitor's.
-			last_error = E_FAIL;
-			error("capture failed for pid %lu: %s", pid, e.what());
+			what = e.what();
 		}
+
+		client = nullptr;
+		capture_client = nullptr;
+
+		// Being shut down mid-activation is not a capture failure.
+		if (WaitForSingleObject(events[HelperEvents::Shutdown].get(), 0) == WAIT_OBJECT_0)
+			return;
+
+		last_error = failure;
+		error("capture failed for pid %lu: %s", pid, what.c_str());
 
 		// A capture that ran for a while before dying is a fresh failure
 		// (device change, target exit), not another round of the same one:
 		// re-attach promptly instead of continuing a grown backoff.
-		if (GetTickCount64() - capture_start >= live_capture_threshold)
+		if (stream_started != 0 && GetTickCount64() - stream_started >= live_capture_threshold)
 			retry_delay = 2000;
-
-		client = nullptr;
-		capture_client = nullptr;
 
 		if (WaitForSingleObject(events[HelperEvents::Shutdown].get(), retry_delay) == WAIT_OBJECT_0)
 			return;
