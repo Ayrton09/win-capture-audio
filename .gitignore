@@ -37,5 +37,8 @@ id_ed25519*
 # runtime output: logs, local databases, backups
 *.log
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 *.sqlite*
 *.bak
