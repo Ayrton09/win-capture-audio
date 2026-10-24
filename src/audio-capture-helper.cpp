@@ -270,8 +270,12 @@ void AudioCaptureHelper::CaptureSafe()
 AudioCaptureHelper::AudioCaptureHelper(Mixer *mixer, WAVEFORMATEX format, DWORD pid, bool exclude)
 	: pid{pid}, exclude{exclude}, mixers{mixer}, format{format}
 {
-	for (auto &event : events)
-		event.create();
+	// Shutdown is manual-reset: it is waited on in more than one place
+	// (activation, the capture loop, the retry backoff), and an auto-reset
+	// event consumed by one of those waits would leave the others - and our
+	// destructor's join - waiting forever.
+	events[HelperEvents::PacketReady].create();
+	events[HelperEvents::Shutdown].create(wil::EventOptions::ManualReset);
 
 	capture_thread = std::thread(&AudioCaptureHelper::CaptureSafe, this);
 }
