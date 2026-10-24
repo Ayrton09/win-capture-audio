@@ -3,12 +3,12 @@
 [![Release](https://img.shields.io/github/v/release/Ayrton09/win-capture-audio?label=release)](../../releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Ayrton09/win-capture-audio/total?label=downloads)](../../releases)
 [![Build](https://github.com/Ayrton09/win-capture-audio/actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
-[![OBS Studio 28–32](https://img.shields.io/badge/OBS%20Studio-28%E2%80%9332-302e31?logo=obsstudio&logoColor=white)](https://obsproject.com/)
+[![OBS Studio 28–33](https://img.shields.io/badge/OBS%20Studio-28%E2%80%9333-302e31?logo=obsstudio&logoColor=white)](https://obsproject.com/)
 [![License: GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 
 **Capture the audio of individual Windows applications in OBS Studio** — by executable name, mixed into one source, with exclude and hotkey modes. No virtual audio cables, no per-window fiddling.
 
-This is a modernized fork of [bozbez/win-capture-audio](https://github.com/bozbez/win-capture-audio) (unmaintained since 2022), updated to build and run against **OBS Studio 28–32** on current Windows 10/11, with a substantial number of threading, COM-lifetime and audio-timing fixes. See the [CHANGELOG](CHANGELOG.md) for everything that changed.
+This is a modernized fork of [bozbez/win-capture-audio](https://github.com/bozbez/win-capture-audio) (unmaintained since 2022), updated to build and run against **OBS Studio 28–33** on current Windows 10/11, with a substantial number of threading, COM-lifetime and audio-timing fixes. See the [CHANGELOG](CHANGELOG.md) for everything that changed.
 
 ## Features
 
@@ -37,7 +37,7 @@ Internally both use [ActivateAudioInterfaceAsync](https://learn.microsoft.com/en
 
 ## Requirements
 
-- OBS Studio **28 or later** (tested against 32.2.x)
+- OBS Studio **28 or later** (tested against 33.0)
 - Windows **10 2004** or later / Windows 11
 
 ## Installation
@@ -103,7 +103,7 @@ cmake --install build --config RelWithDebInfo
 
 If you have a self-built OBS instead, point `CMAKE_PREFIX_PATH` at it and the usual `find_package(libobs)` path is used.
 
-Release binaries are built by CI against the **OBS 28.0.0** headers on purpose: libobs is forward-compatible, and declaring the oldest supported API lets one binary load on every OBS release from 28 through 32.
+Release binaries are built by CI against the **OBS 28.0.0** headers on purpose: libobs is forward-compatible, and declaring the oldest supported API lets one binary load on every OBS release from 28 through 33.
 
 ## Troubleshooting
 
