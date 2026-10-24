@@ -258,8 +258,8 @@ void SessionMonitor::AddDevice(std::wstring id, wil::com_ptr<IMMDevice> device)
 	// must not take down session monitoring for every other device - this
 	// runs both from startup enumeration and from hotplug events.
 	try {
-		device_watchers.try_emplace(id, id, device, worker_tid);
-		debug("registered new device: %ls", id.c_str());
+		if (device_watchers.try_emplace(id, id, device, worker_tid).second)
+			debug("registered new device: %ls", id.c_str());
 	} catch (const wil::ResultException &e) {
 		error("skipping device %ls: %s", id.c_str(), e.what());
 	}
