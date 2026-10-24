@@ -17,3 +17,25 @@ compile_commands.json
 # ignore generated files
 *.generated.*
 *.dll.old
+
+# editor / assistant folders
+.vs/
+.claude/
+
+# secrets: keys, certificates, credentials
+*.pem
+*.key
+*.pfx
+*.p12
+*.ppk
+id_rsa*
+id_ed25519*
+.env
+.env.*
+!.env.example
+
+# runtime output: logs, local databases, backups
+*.log
+*.db
+*.sqlite*
+*.bak
