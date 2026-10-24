@@ -1,4 +1,4 @@
-; Inno Setup script for win-capture-audio.
+﻿; Inno Setup script for win-capture-audio.
 ; Installs to the modern OBS per-plugin layout under %ProgramData% and, thanks to the
 ; unchanged AppId, automatically uninstalls any previous version first - including 2.2.x
 ; installs that lived inside the OBS Studio directory.
@@ -45,6 +45,10 @@ ArchitecturesInstallIn64BitMode=x64compatible
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+
+[CustomMessages]
+english.OldUninstallFailed=The previous version could not be removed (error %1). Setup will install over it; if the plugin misbehaves afterwards, uninstall it from Windows Settings and run this installer again.
+spanish.OldUninstallFailed=No se pudo quitar la versión anterior (error %1). El instalador la reemplazará igual; si el plugin falla después, desinstálalo desde Configuración de Windows y vuelve a ejecutar este instalador.
 
 [Files]
 Source: "@RELEASE_DIR@/*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -144,10 +148,17 @@ begin
     sUnInstallString := RemoveQuotes(sUnInstallString);
     if not IsTrustedUninstaller(sUnInstallString) then
       Result := 1
-    else if Exec(sUnInstallString, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES','', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
+    else if Exec(sUnInstallString, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES','', SW_HIDE, ewWaitUntilTerminated, iResultCode) and (iResultCode = 0) then
       Result := 3
-    else
+    else begin
+      // Exec only reports that the process started (on failure iResultCode
+      // holds the Windows error); a non-zero exit code, e.g. a file held open
+      // by OBS, means the old version is still there.
+      Log(Format('Previous uninstaller failed: %d', [iResultCode]));
+      SuppressibleMsgBox(FmtMessage(CustomMessage('OldUninstallFailed'), [IntToStr(iResultCode)]),
+        mbError, MB_OK, IDOK);
       Result := 2;
+    end;
   end else
     Result := 1;
 end;
