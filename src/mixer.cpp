@@ -23,9 +23,16 @@ UINT64 Mixer::GetCurrentTimestamp()
 // Single-floor 128-bit conversions: the old two-step ns round-trips lost up
 // to ~100ns per call, and frames * 1e9 overflows UINT64 within days of
 // accumulated frames.
+//
+// Durations round to the nearest frame rather than down: timestamps (ours via
+// FramesToDuration, and WASAPI's) sit up to one 100ns unit short of the exact
+// frame time, and flooring turned that into a whole frame - packets placed one
+// frame off, one sample summed twice and a zero left behind. floor(2x) is
+// odd exactly when x's fraction is >= 0.5, so this stays one 128-bit division.
 std::size_t Mixer::DurationToFrames(UINT64 duration)
 {
-	return (std::size_t)util_mul_div64(duration, format.nSamplesPerSec, 10000000ULL);
+	return (std::size_t)((util_mul_div64(duration, 2ULL * format.nSamplesPerSec, 10000000ULL) + 1) /
+			     2);
 }
 
 UINT64 Mixer::FramesToDuration(std::size_t frames)
