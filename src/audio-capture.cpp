@@ -220,16 +220,12 @@ void AudioCapture::StopCapture()
 	capture_exclude = false;
 }
 
-std::set<DWORD> AudioCapture::GetCapturedPids()
+// One snapshot of both: read separately, a mode switch on the worker in
+// between would pair the old pids with the new mode.
+std::pair<std::set<DWORD>, bool> AudioCapture::GetCaptureState()
 {
 	auto lock = pids_section.lock();
-	return pids;
-}
-
-bool AudioCapture::IsExcludeCapture()
-{
-	auto lock = pids_section.lock();
-	return capture_exclude;
+	return {pids, capture_exclude};
 }
 
 void AudioCapture::WorkerUpdate()
@@ -788,7 +784,7 @@ void AudioCapture::UpdateStatus(obs_properties_t *ps)
 	auto sessions = monitor ? monitor->GetSessions()
 				: std::unordered_map<SessionKey, std::string>{};
 
-	auto captured = GetCapturedPids();
+	auto [captured, exclude] = GetCaptureState();
 	if (captured.empty()) {
 		std::string text = TEXT_STATUS_NONE;
 		AppendCaptureErrors(text, captured, false, sessions);
@@ -832,7 +828,6 @@ void AudioCapture::UpdateStatus(obs_properties_t *ps)
 		}
 	}
 
-	const bool exclude = IsExcludeCapture();
 	std::string text = exclude ? TEXT_STATUS_EXCLUDING : TEXT_STATUS_CAPTURING;
 	if (names.empty()) {
 		// Protected process (OpenProcess denied): fall back to the count.

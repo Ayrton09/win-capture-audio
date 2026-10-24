@@ -4,6 +4,7 @@
 #include <optional>
 #include <tuple>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include <windows.h>
@@ -125,8 +126,7 @@ public:
 	void AppendUnmatchedPatterns(std::string &text,
 				     const std::unordered_map<SessionKey, std::string> &sessions);
 	void UpdateStatus(obs_properties_t *ps);
-	std::set<DWORD> GetCapturedPids();
-	bool IsExcludeCapture();
+	std::pair<std::set<DWORD>, bool> GetCaptureState();
 	void AppendCaptureErrors(std::string &text, const std::set<DWORD> &captured, bool exclude,
 				 const std::unordered_map<SessionKey, std::string> &sessions);
 	std::set<std::string> GetExecutables(obs_data_t *settings);
