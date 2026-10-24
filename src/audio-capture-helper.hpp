@@ -98,7 +98,7 @@ public:
 	DWORD GetPid() { return pid; }
 	bool IsExclude() { return exclude; }
 	WAVEFORMATEX GetFormat() { return format; }
-	HRESULT GetLastError() { return last_error.load(std::memory_order_relaxed); }
+	HRESULT GetCaptureError() { return last_error.load(std::memory_order_relaxed); }
 
 	AudioCaptureHelper(Mixer *mixer, WAVEFORMATEX format, DWORD pid, bool exclude);
 	~AudioCaptureHelper();

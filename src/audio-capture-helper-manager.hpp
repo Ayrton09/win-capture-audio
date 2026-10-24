@@ -111,7 +111,7 @@ public:
 		auto lock = helpers_section.lock();
 
 		auto it = helpers.find(MakeKey(pid, exclude));
-		return it == helpers.end() ? S_OK : it->second.GetLastError();
+		return it == helpers.end() ? S_OK : it->second.GetCaptureError();
 	}
 
 	void UnRegisterMixer(DWORD pid, bool exclude, Mixer *mixer)
