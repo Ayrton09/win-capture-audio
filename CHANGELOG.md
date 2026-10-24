@@ -24,16 +24,35 @@
   captured window again without pressing Start.
 - The "MMCSS registration failed" log line reported 0 instead of the actual
   Windows error code.
+- **A late packet arriving just after the mix drained could rewind OBS's
+  timestamps.** It is now trimmed against what was already sent, like any
+  other late packet.
+- **Retries back off properly while the audio service is unresponsive.** An
+  activation that timed out after 10 seconds counted as a capture that had
+  been running, so the retry delay never grew past 2 seconds.
+- Removing a source while its capture was still connecting no longer logs a
+  bogus "capture failed" error, and a failed wait inside the capture loop is
+  now reported (in the log and the status line) and retried instead of
+  silently ending that capture.
+- The status line could briefly pair the captured processes with the wrong
+  mode right after switching between include and exclude.
 
 ### Installer
 
 - If the previous version's uninstaller fails (for example because OBS is
   still running), setup now says so instead of carrying on silently.
+  Silent installs only log it, so an unattended upgrade never waits on a
+  dialog.
 
 ### Build
 
 - The CI workflow's token is read-only by default and is no longer kept in
   the checkout.
+- The release build fails if the pushed tag does not match the project
+  version, instead of publishing files named after the previous release.
+- Building from Git Bash no longer fails while assembling the libobs SDK
+  (Git's own `tar` was picked up instead of Windows').
+- README: OBS Studio 33 is supported.
 
 ## 2.3.4 — 2026-09-20
 
