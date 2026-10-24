@@ -14,6 +14,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Read-only by default; only the release job asks for more.
+permissions:
+  contents: read
+
 env:
   # Oldest supported OBS: release binaries are built against these headers so
   # obs_module_ver reports 28.0.0 and OBS 32's module-version gate
@@ -29,6 +33,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Download OBS Studio ${{ env.OBS_VERSION }} (for headers + obs.dll)
         shell: pwsh
