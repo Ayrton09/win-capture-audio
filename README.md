@@ -45,15 +45,18 @@ Internally both use [ActivateAudioInterfaceAsync](https://learn.microsoft.com/en
 Grab the latest [release](../../releases/latest):
 
 - **Setup installer** (recommended): removes any older version automatically, including 2.2.x installs inside the OBS directory.
-- **Portable zip**: extract into `%ProgramData%\obs-studio\plugins\`.
+- **Zip**: extract into `%ProgramData%\obs-studio\plugins\`. For a **portable** OBS 33 or newer, extract it into the `plugins\` folder next to OBS's `bin\` folder instead (create it if it does not exist).
 
-The resulting layout is OBS's modern per-plugin layout:
+The resulting layout:
 
 ```
 C:\ProgramData\obs-studio\plugins\win-capture-audio\
-├── bin\64bit\win-capture-audio.dll
+├── win-capture-audio.dll          (OBS 33 and newer)
+├── bin\64bit\win-capture-audio.dll (OBS 28–32)
 └── data\locale\*.ini
 ```
+
+OBS 33 changed where it looks for plugins, and OBS 28–32 only know the old place, so the DLL ships in both. Each OBS version loads exactly one copy; OBS 33 notes in its log that it skipped the second one.
 
 Restart OBS and add the **"Application Audio Output Capture"** source.
 

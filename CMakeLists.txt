@@ -169,10 +169,19 @@ set_target_properties(win-capture-audio PROPERTIES PREFIX "")
 # ---------------------------------------------------------------------------------
 # Staging + install
 #
-# OBS 32 on Windows discovers third-party plugins under
+# OBS 28-32 on Windows discover third-party plugins under
 #   %ProgramData%/obs-studio/plugins/<name>/bin/64bit/<name>.dll
 #   %ProgramData%/obs-studio/plugins/<name>/data/...
 # (frontend/widgets/OBSBasic.cpp -> AddExtraModulePaths -> GetProgramDataPath).
+#
+# OBS 33 replaced that with a plugin manager whose layout drops bin/64bit:
+#   <plugins>/<name>/<name>.dll  +  <plugins>/<name>/data/...
+# where <plugins> is %ProgramData%/obs-studio/plugins, or <obs>/plugins for a
+# portable OBS. It still reads the bin/64bit layout, but only from %ProgramData%
+# and only outside portable mode (frontend/plugin-manager/
+# PluginModuleLoader_Windows.cpp). So the DLL is staged in both places: OBS 33
+# loads the top-level copy and skips the other as already loaded, and OBS 28-32
+# never look at the top level.
 #
 # The legacy layout inside the OBS installation directory
 #   <obs>/obs-plugins/64bit/<name>.dll  +  <obs>/data/obs-plugins/<name>/...
@@ -192,6 +201,9 @@ add_custom_command(TARGET win-capture-audio POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy
         "$<TARGET_FILE:win-capture-audio>"
         "${RELEASE_DIR}/bin/${ARCH_NAME}"
+    COMMAND "${CMAKE_COMMAND}" -E copy
+        "$<TARGET_FILE:win-capture-audio>"
+        "${RELEASE_DIR}"
     VERBATIM)
 
 if(NOT DEFINED CMAKE_INSTALL_PREFIX OR CMAKE_INSTALL_PREFIX STREQUAL "")
@@ -201,6 +213,8 @@ elseif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 install(TARGETS win-capture-audio LIBRARY DESTINATION "bin/${ARCH_NAME}")
+# Top-level copy for OBS 33+'s plugin manager (see "Staging" above).
+install(FILES "$<TARGET_FILE:win-capture-audio>" DESTINATION ".")
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/" DESTINATION "data")
 
 if(MSVC)
