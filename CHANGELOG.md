@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.3.6 — 2026-10-29
+
+### Fixed
+
+- **The zip did not load in a portable OBS 33.** OBS 33 replaced its plugin
+  loader: it now expects `<plugin>\<plugin>.dll` next to the `data` folder, and
+  it only reads the older `bin\64bit` layout from `%ProgramData%` outside
+  portable mode. OBS 28-32 only know `bin\64bit`. The installer and the zip
+  now ship the DLL in both places; each OBS version loads exactly one copy
+  (OBS 33 logs that it skipped the other).
+
 ## 2.3.5 — 2026-10-24
 
 ### Fixed
