@@ -66,7 +66,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
 
-          # portable zip: extract into <obs>/... or %ProgramData%/obs-studio/plugins/
+          # zip: extract into %ProgramData%/obs-studio/plugins/ (portable OBS: see README)
           # Named with the project version so it matches the installer and release
           # downloads from different versions stay distinguishable.
           $m = Select-String CMakeLists.txt -Pattern 'project\(win-capture-audio VERSION ([0-9.]+)'
@@ -132,7 +132,7 @@ jobs:
           body: |
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for the full list of changes.
 
-            **Install:** run `win-capture-audio-${{ github.ref_name }}-setup.exe` (removes any older version automatically), or extract the zip into `%ProgramData%\obs-studio\plugins\` for portable installs.
+            **Install:** run `win-capture-audio-${{ github.ref_name }}-setup.exe` (removes any older version automatically), or extract the zip into `%ProgramData%\obs-studio\plugins\`. Portable OBS installs never read `%ProgramData%`: see the README's Installation section for where the files go there.
 
             SHA-256 checksums are attached as `SHA256SUMS.txt`.
 

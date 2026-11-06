@@ -26,7 +26,7 @@ This is a modernized fork of [bozbez/win-capture-audio](https://github.com/bozbe
 |                              | win-capture-audio                       | OBS built-in                    |
 | ---------------------------- | --------------------------------------- | ------------------------------- |
 | Select application by        | executable name, wildcards              | window                          |
-| Survives application restart | ✅                                      | ❌ stops when the window closes |
+| Apps without a visible window | ✅ (tray, background)                 | ❌ needs a window to pick       |
 | Applications per source      | as many as you like, mixed and aligned  | exactly one                     |
 | Exclude mode                 | ✅                                      | ❌                              |
 | Hotkey mode                  | ✅                                      | ❌                              |
@@ -44,8 +44,13 @@ Internally both use [ActivateAudioInterfaceAsync](https://learn.microsoft.com/en
 
 Grab the latest [release](../../releases/latest):
 
-- **Setup installer** (recommended): removes any older version automatically, including 2.2.x installs inside the OBS directory.
-- **Zip**: extract into `%ProgramData%\obs-studio\plugins\`. For a **portable** OBS 33 or newer, extract it into the `plugins\` folder next to OBS's `bin\` folder instead (create it if it does not exist).
+- **Setup installer** (recommended for a regular OBS install): removes any older version automatically, including 2.2.x installs inside the OBS directory.
+- **Zip**: extract into `%ProgramData%\obs-studio\plugins\`.
+
+A **portable** OBS never reads `%ProgramData%`, so neither of the above reaches it:
+
+- **Portable OBS 33 or newer:** extract the zip into the `plugins\` folder next to OBS's `bin\` folder (create it if it does not exist).
+- **Portable OBS 28–32:** these only load plugins from inside the OBS folder. From the zip, copy `bin\64bit\win-capture-audio.dll` into OBS's `obs-plugins\64bit\`, and the contents of `data\` into `data\obs-plugins\win-capture-audio\`.
 
 The resulting layout:
 
@@ -68,7 +73,12 @@ Restart OBS and add the **"Application Audio Output Capture"** source.
 
 **Capture everything except some applications** — same mode, tick *"Capture all audio EXCEPT sessions from the selected executables"*. Remember to disable Desktop Audio (see the note above), or you will hear everything twice.
 
-**Hotkey mode** — switch the mode to *"Capture foreground window with hotkey"*, then assign the two hotkeys in **Settings → Hotkeys** under this source: *"Capture foreground window"* and *"Deactivate capture"*. (Those are the plugin's hotkeys — not the standard *Show*/*Hide* entries listed above them, which only toggle the source's visibility.) Focus the application you want and press the capture hotkey.
+Two things to know about exclude mode, both down to Windows only being able to leave out one process tree per capture:
+
+- **OBS's own audio.** While an excluded application is running, the capture leaves out *that* application, so whatever OBS itself plays is captured too, including audio monitoring. Like OBS's Desktop Audio, monitoring this source to the default output device is muted to avoid feeding it back into itself; don't monitor it to another device. While no excluded application is running, OBS's own process is the one left out instead.
+- **Browser sources.** A Browser Source with *"Control audio via OBS"* unticked plays from OBS's process, so with the point above it is captured only while an excluded application is running. Tick *"Control audio via OBS"* and it goes through OBS's mixer like any other source, always.
+
+**Hotkey mode** — switch the mode to *"Capture foreground window with hotkey"*, then assign the two hotkeys in **Settings → Hotkeys** under this source: *"Capture foreground window"* and *"Deactivate capture"*. (Those are the plugin's hotkeys — not the standard *Show*/*Hide* entries listed above them, which only toggle the source's visibility.) Focus the application you want and press the capture hotkey. Pressing it while an OBS window is focused does nothing.
 
 ### Apps that play audio from more than one process
 
