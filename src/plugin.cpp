@@ -1,3 +1,5 @@
+#include <atomic>
+
 #include <obs-module.h>
 #include "session-monitor.hpp"
 #include "common.hpp"
@@ -64,7 +66,23 @@ bool obs_module_load(void)
 	return true;
 }
 
+// Incremented/decremented by AudioCapture (audio-capture.cpp).
+extern std::atomic<int> live_audio_captures;
+
 void obs_module_unload()
 {
+	// libobs unloads modules before it destroys sources something else still
+	// holds a reference to (a script or another plugin), and those sources'
+	// workers keep using the monitor. Leave it running in that case: the
+	// process is exiting, and a leaked monitor is harmless where a deleted
+	// one would crash on the way out.
+	if (int alive = live_audio_captures.load(); alive > 0) {
+		blog(LOG_WARNING,
+		     "[win-capture-audio] %d source(s) still alive at unload; "
+		     "keeping the session monitor until exit",
+		     alive);
+		return;
+	}
+
 	SessionMonitor::Destroy();
 }

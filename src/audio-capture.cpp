@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
+#include <atomic>
 #include <functional>
 #include <optional>
 #include <string>
@@ -38,6 +39,9 @@ AudioCaptureHelperManager helper_manager;
 
 // Set by obs_module_load (plugin.cpp).
 extern bool windows_supports_process_loopback;
+
+// Sources currently alive; read by obs_module_unload (plugin.cpp).
+std::atomic<int> live_audio_captures{0};
 
 // Case folding must be Unicode-aware: executable names are UTF-8 and Windows
 // filenames case-fold beyond ASCII, so a byte-wise tolower() would fail to
@@ -527,6 +531,8 @@ AudioCapture::AudioCapture(obs_data_t *settings, obs_source_t *source) : source{
 	hotkey_pair = obs_hotkey_pair_register_source(source, HOTKEY_START, TEXT_HOTKEY_START,
 						      HOTKEY_STOP, TEXT_HOTKEY_STOP, hotkey_start,
 						      hotkey_stop, this, this);
+
+	live_audio_captures.fetch_add(1);
 }
 
 static void *audio_capture_create(obs_data_t *settings, obs_source_t *source)
@@ -544,6 +550,8 @@ static void *audio_capture_create(obs_data_t *settings, obs_source_t *source)
 
 AudioCapture::~AudioCapture()
 {
+	live_audio_captures.fetch_sub(1);
+
 	obs_hotkey_pair_unregister(hotkey_pair);
 
 	if (auto *monitor = SessionMonitor::Instance())
