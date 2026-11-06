@@ -449,11 +449,24 @@ void AudioCapture::HotkeyStart()
 	if (AudioCapture::IsUwpWindow(window))
 		window = AudioCapture::GetUwpActualWindow(window);
 
+	// OBS's own windows (main window, projectors, this dialog) are never a
+	// target: capturing OBS's process tree picks up everything it monitors,
+	// this source included, and feeds it back in. OBS's own application
+	// audio capture rejects them the same way.
+	DWORD window_pid = 0;
+	GetWindowThreadProcessId(window, &window_pid);
+
 	// Check the mode under the same lock that stores the window, so a
 	// concurrent switch away from hotkey mode cannot be undone by us.
 	auto lock = config_section.lock();
 	if (config.mode != MODE_HOTKEY)
 		return;
+
+	if (window_pid == GetCurrentProcessId()) {
+		lock.reset();
+		info("ignoring hotkey: the foreground window belongs to OBS");
+		return;
+	}
 
 	config.hotkey_window = window;
 	lock.reset();
