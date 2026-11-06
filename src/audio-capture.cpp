@@ -645,16 +645,19 @@ static bool session_add_callback(obs_properties_t *ps, obs_property_t *p, void *
 	auto *source = ctx->GetSource();
 	auto *settings = obs_source_get_settings(source);
 
-	// The combo's stored setting lags the widget: OBS only writes it when the
-	// selection is actively changed, so a fresh dialog shows the first entry
-	// while the setting is still empty (or holds a stale, no-longer-offered
-	// value). Add what the user actually sees: the stored value when it is a
-	// currently-addable executable, the first addable one otherwise.
-	auto addable = ctx->GetAddableExecutables(settings);
+	// Add what the combo shows as selected. OBS stores the shown entry
+	// whenever the combo is built, so the setting matches the widget; it is
+	// only empty when nothing was offered. Its session may have ended since
+	// the list was filled - add it anyway, it is still what the user picked
+	// (falling back to another entry would capture an application they never
+	// chose). Skip it only when the list already covers it.
 	std::string executable = obs_data_get_string(settings, SETTING_ACTIVE_SESSION_LIST);
-
-	if (std::find(addable.begin(), addable.end(), executable) == addable.end())
+	if (executable.empty()) {
+		auto addable = ctx->GetAddableExecutables(settings);
 		executable = addable.empty() ? std::string() : addable.front();
+	} else if (MatchesAnyExecutable(ctx->GetExecutables(settings), executable)) {
+		executable.clear();
+	}
 
 	if (!executable.empty()) {
 		auto *executable_list_array = obs_data_get_array(settings, SETTING_EXECUTABLE_LIST);
