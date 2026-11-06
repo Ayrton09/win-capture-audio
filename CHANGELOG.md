@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Monitoring an exclude-mode source could feed it back into itself.** The
+  source has always declared that OBS must not monitor it onto the device it
+  captures, but libobs only honours that through a `device_id` setting, which
+  this source never had, so the protection did nothing. It now behaves like
+  OBS's own Desktop Audio: monitoring it to the default output device is
+  muted. Monitoring to a different device is not covered.
+- **Hotkey mode no longer captures OBS itself.** Pressing the capture hotkey
+  while an OBS window was focused captured OBS's own process, monitoring
+  output included, which could feed back into the source. OBS windows are now
+  ignored, as OBS's own application audio capture does.
+- **"Add executable" could add an application other than the one selected.**
+  If the selected application's session had ended since the list was filled,
+  the first other entry was added instead. The selected one is added now.
+- **No crash at exit when a source outlives the plugin.** If a script or
+  another plugin still holds one of these sources when OBS shuts down, libobs
+  unloads the plugin first; the session monitor is now kept until exit
+  instead of being deleted under that source.
+
+### Docs
+
+- Portable OBS installs never read `%ProgramData%`. The README now says where
+  the files go for portable OBS 28-32 and 33+, and the release notes no longer
+  point portable users at `%ProgramData%`.
+- The comparison with OBS's built-in application capture no longer claims it
+  stops when the application restarts (it reconnects); the real difference is
+  that it needs a visible window to pick.
+- Exclude mode: documented how OBS's own audio (monitoring, browser sources
+  not controlled via OBS) is handled.
+
 ## 2.3.6 — 2026-10-29
 
 ### Fixed
