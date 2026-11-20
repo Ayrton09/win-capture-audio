@@ -10,6 +10,11 @@
   Node 24. Downloaded build artifacts are now checked against their digest.
 - WIL updated to its latest commit, which works around newer MSVC releases
   breaking the build of WIL's fail-fast path.
+- The OBS 28.0.0 downloads the release build depends on (the OBS zip for
+  `obs.dll`'s exports and the source tarball for the libobs headers) are now
+  checked against pinned SHA-256 hashes, so a tampered download fails the
+  build instead of ending up in the published DLL.
+- Dependabot now watches the CI actions and the WIL submodule weekly.
 
 ## 2.3.7 — 2026-11-06
 
