@@ -39,6 +39,7 @@ else()
         CACHE PATH "Directory holding the generated libobs SDK (headers + import library)")
     set(OBS_INSTALL_DIR "" CACHE PATH "Root of the OBS Studio installation (auto-detected when empty)")
     set(OBS_VERSION "" CACHE STRING "obs-studio tag to take headers from (auto-detected when empty)")
+    set(OBS_HEADERS_SHA256 "" CACHE STRING "Expected SHA-256 of the obs-studio source tarball (checked when set)")
 
     set(_bootstrap_args
         -NoProfile -ExecutionPolicy Bypass
@@ -50,6 +51,9 @@ else()
     endif()
     if(OBS_VERSION)
         list(APPEND _bootstrap_args -ObsVersion "${OBS_VERSION}")
+    endif()
+    if(OBS_HEADERS_SHA256)
+        list(APPEND _bootstrap_args -ExpectedSha256 "${OBS_HEADERS_SHA256}")
     endif()
 
     message(STATUS "libobs: assembling SDK from the installed OBS Studio build")

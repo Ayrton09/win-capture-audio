@@ -25,6 +25,11 @@ env:
   # every OBS release from 28 up. Building against a newer tag would make
   # OBS 32.0/32.1 refuse to load it.
   OBS_VERSION: 28.0.0
+  # SHA-256 of what this build downloads for that version. The zip's obs.dll
+  # and obs64.exe carry valid OBS Project signatures, and the tarball's libobs/
+  # matches the 28.0.0 tag's tree file for file. Update both with OBS_VERSION.
+  OBS_ZIP_SHA256: 4441ac45f460722790f71ef124746f24827dbaf6821e03f2e5851da659d7e97c
+  OBS_HEADERS_SHA256: 412a1a26699a6861dbbe93346310d002369c62e00626e8c3a77c127e5e1c06e8
 
 jobs:
   build:
@@ -49,6 +54,8 @@ jobs:
           $asset = $release.assets | Where-Object { $_.name -match '(Windows(-x64)?|Full-x64)\.zip$' } | Select-Object -First 1
           if (-not $asset) { throw "No Windows zip asset on obs-studio $env:OBS_VERSION" }
           Invoke-WebRequest $asset.browser_download_url -OutFile obs.zip
+          $hash = (Get-FileHash obs.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $env:OBS_ZIP_SHA256) { throw "OBS zip SHA-256 mismatch: got $hash, expected $env:OBS_ZIP_SHA256" }
           Expand-Archive obs.zip -DestinationPath obs-dist
           $dll = Get-ChildItem obs-dist -Recurse -Filter obs.dll | Where-Object { $_.FullName -match '64bit' } | Select-Object -First 1
           if (-not $dll) { throw "obs.dll not found in the OBS zip" }
@@ -56,7 +63,7 @@ jobs:
           "OBS_DIR=$obsRoot" | Out-File $env:GITHUB_ENV -Append
 
       - name: Configure
-        run: cmake -S . -B build -A x64 -DOBS_INSTALL_DIR="${{ env.OBS_DIR }}" -DOBS_VERSION="${{ env.OBS_VERSION }}"
+        run: cmake -S . -B build -A x64 -DOBS_INSTALL_DIR="${{ env.OBS_DIR }}" -DOBS_VERSION="${{ env.OBS_VERSION }}" -DOBS_HEADERS_SHA256="${{ env.OBS_HEADERS_SHA256 }}"
 
       - name: Build
         run: cmake --build build --config RelWithDebInfo

@@ -37,6 +37,8 @@ param(
     [string]$ObsDir,
     [string]$ObsVersion,
     [string]$OutDir,
+    # When given (CI does), the downloaded source tarball must match it.
+    [string]$ExpectedSha256,
     [switch]$Force
 )
 
@@ -145,6 +147,13 @@ try {
     Invoke-WebRequest -Uri $url -OutFile $tarball -UseBasicParsing
 } catch {
     throw "Failed to download obs-studio $ObsVersion. Check that the tag exists, or pass -ObsVersion explicitly. ($($_.Exception.Message))"
+}
+if ($ExpectedSha256) {
+    $hash = (Get-FileHash $tarball -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($hash -ne $ExpectedSha256.ToLowerInvariant()) {
+        throw "obs-studio $ObsVersion tarball SHA-256 mismatch: got $hash, expected $ExpectedSha256"
+    }
+    Write-Step "Verified SHA-256 of the downloaded tarball"
 }
 
 # Extract libobs/ only. The full tree contains symlinks (.github/scripts/*, build-aux/*)
