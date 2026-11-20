@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+### Fixed
+
+- **OBS 32.0.4+ could silence every monitored source in the stream and
+  recording, and crash later (regression in 2.3.7).** 2.3.7 gave the source a
+  `device_id` so that OBS would not monitor it onto its own capture. From OBS
+  32.0.4, libobs also takes any such source as the capture of the monitoring
+  device: after the monitoring device was changed (or a profile with another
+  one was loaded), every source set to "Monitor and Output" was removed from
+  the stream and recording while this source was active, and libobs kept a
+  pointer to the source that went stale once it was deleted. It also muted
+  monitoring of this source in include and hotkey mode, where there was
+  nothing to protect. The setting and the flag are gone; restart OBS once
+  after updating if you changed the monitoring device during a 2.3.7 session.
+  As before 2.3.7, don't monitor an exclude-mode source (see the README).
+- **Hotkey mode no longer captures OBS through its parent process.** Pressing
+  the capture hotkey with the desktop or taskbar focused captured
+  `explorer.exe`'s process tree, which contains OBS, and with it OBS's own
+  output. Processes OBS descends from are now ignored like OBS's own windows.
+- A source destroyed while OBS was shutting down could still let the plugin
+  delete the session monitor under it.
+- Capture and mixer threads now leave the multimedia scheduler explicitly
+  when they end.
+
+### Docs
+
+- Troubleshooting: the crackling advice pointed at a setting that does not
+  exist there and in the wrong direction.
+- Zip installs over a 2.2.x copy inside the OBS folder: the old DLL must be
+  deleted on OBS 28-32.
+- Portable OBS: only 29.1 and newer ignore `%ProgramData%`; 28.0-29.0 read
+  both places.
+- Exclude mode: documented the several-excluded-applications fallback and
+  that monitoring an exclude-mode source feeds back.
+- Building: CMake 3.24+ and elevation for `cmake --install` are mentioned;
+  a plugin disabled in OBS 32's Plugin Manager is covered in troubleshooting.
+
 ### Build
 
 - CI actions moved to their Node 24 releases (checkout v7, upload-artifact v7,
@@ -15,6 +51,9 @@
   checked against pinned SHA-256 hashes, so a tampered download fails the
   build instead of ending up in the published DLL.
 - Dependabot now watches the CI actions and the WIL submodule weekly.
+- The release job refuses to touch a release that is already published, so a
+  re-run cannot silently replace assets users have downloaded, and the libobs
+  header hash check fails closed in CI instead of being skipped.
 
 ## 2.3.7 — 2026-11-06
 
