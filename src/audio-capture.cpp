@@ -1036,12 +1036,6 @@ static void audio_capture_defaults(obs_data_t *settings)
 
 	obs_data_set_default_bool(settings, SETTING_EXCLUDE, false);
 	obs_data_set_default_int(settings, SETTING_LATENCY, 0);
-
-	// Not a user setting: libobs only honours OBS_SOURCE_DO_NOT_SELF_MONITOR
-	// through a "device_id" string matched against the monitoring device
-	// (audio-monitoring/win32/wasapi-output.c). "default" is the same value
-	// OBS's desktop audio source uses for the default output device.
-	obs_data_set_default_string(settings, "device_id", "default");
 }
 
 static const char *audio_capture_get_name(void *type_data)
@@ -1054,14 +1048,15 @@ struct obs_source_info audio_capture_info = {
 	.id = "audio_capture",
 
 	.type = OBS_SOURCE_TYPE_INPUT,
-	// DO_NOT_SELF_MONITOR: exclude mode captures desktop-wide audio, OBS's own
-	// output included; monitoring this source would feed it back into itself.
-	// libobs applies the flag only through the "device_id" setting (see
-	// audio_capture_defaults), so this covers monitoring to the default output
-	// device - the same protection, and the same limit, as OBS's own desktop
-	// audio source. Monitoring to another device is not covered.
-	.output_flags = OBS_SOURCE_AUDIO | OBS_SOURCE_DO_NOT_DUPLICATE |
-			OBS_SOURCE_DO_NOT_SELF_MONITOR,
+	// No OBS_SOURCE_DO_NOT_SELF_MONITOR: libobs acts on it only through a
+	// "device_id" setting naming an output device, and from OBS 32.0.4 a
+	// matching source is also taken as the capture of the monitoring device -
+	// every monitored source is then silenced in the outputs while this one is
+	// active, and libobs keeps a raw pointer to it that only OBS's own audio
+	// sources clear on destruction. This source captures processes, not a
+	// device, so none of that fits; monitoring an exclude-mode source is
+	// documented as feeding back instead.
+	.output_flags = OBS_SOURCE_AUDIO | OBS_SOURCE_DO_NOT_DUPLICATE,
 
 	.get_name = audio_capture_get_name,
 
