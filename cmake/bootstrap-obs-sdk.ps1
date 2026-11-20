@@ -149,7 +149,13 @@ try {
     throw "Failed to download obs-studio $ObsVersion. Check that the tag exists, or pass -ObsVersion explicitly. ($($_.Exception.Message))"
 }
 if ($ExpectedSha256) {
-    $hash = (Get-FileHash $tarball -Algorithm SHA256).Hash.ToLowerInvariant()
+    # .NET directly rather than Get-FileHash: when CMake runs this script from
+    # a PowerShell 7 session (as CI does), the inherited PSModulePath can keep
+    # Windows PowerShell from loading the module that provides the cmdlet.
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::OpenRead($tarball)
+    try { $hash = -join ($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) }
+    finally { $stream.Dispose(); $sha.Dispose() }
     if ($hash -ne $ExpectedSha256.ToLowerInvariant()) {
         throw "obs-studio $ObsVersion tarball SHA-256 mismatch: got $hash, expected $ExpectedSha256"
     }
