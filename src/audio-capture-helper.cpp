@@ -12,6 +12,7 @@
 
 #include <wil/result.h>
 #include <wil/result_macros.h>
+#include <wil/resource.h>
 
 #include "audio-capture-helper.hpp"
 #include "format-conversion.hpp"
@@ -225,10 +226,15 @@ void AudioCaptureHelper::CaptureSafe()
 
 	// Register with the multimedia scheduler so packet deadlines survive CPU
 	// contention (game + encoder): plain-priority threads getting starved is
-	// what audible crackling under load is made of. Thread exit unregisters.
+	// what audible crackling under load is made of. Reverted on the way out.
 	DWORD mmcss_task = 0;
-	if (!AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcss_task))
+	HANDLE mmcss = AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcss_task);
+	if (!mmcss)
 		warn("MMCSS registration failed (%lu)", GetLastError());
+	auto mmcss_revert = wil::scope_exit([&] {
+		if (mmcss)
+			AvRevertMmThreadCharacteristics(mmcss);
+	});
 
 	// The stream dies when the device changes or the target exits
 	// (AUDCLNT_E_DEVICE_INVALIDATED and friends). Retry until we are shut

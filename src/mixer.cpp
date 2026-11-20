@@ -179,11 +179,16 @@ void Mixer::Run()
 {
 	// Register with the multimedia scheduler: the 10ms tick has to hold its
 	// deadline under CPU contention or the output stutters (see also the
-	// THREAD_PRIORITY_HIGHEST fallback set by the constructor). Thread exit
-	// unregisters.
+	// THREAD_PRIORITY_HIGHEST fallback set by the constructor). Reverted on
+	// the way out.
 	DWORD mmcss_task = 0;
-	if (!AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcss_task))
+	HANDLE mmcss = AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcss_task);
+	if (!mmcss)
 		warn("MMCSS registration failed (%lu)", GetLastError());
+	auto mmcss_revert = wil::scope_exit([&] {
+		if (mmcss)
+			AvRevertMmThreadCharacteristics(mmcss);
+	});
 
 	// Force message queue creation
 	MSG msg;
