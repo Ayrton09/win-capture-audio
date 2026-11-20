@@ -456,9 +456,16 @@ void AudioCapture::HotkeyStart()
 	// OBS's own windows (main window, projectors, this dialog) are never a
 	// target: capturing OBS's process tree picks up everything it monitors,
 	// this source included, and feeds it back in. OBS's own application
-	// audio capture rejects them the same way.
+	// audio capture rejects them the same way. The same goes for any process
+	// OBS descends from - the desktop and taskbar (explorer.exe), a launcher
+	// or terminal - since their tree contains OBS.
 	DWORD window_pid = 0;
 	GetWindowThreadProcessId(window, &window_pid);
+	const DWORD self = GetCurrentProcessId();
+	const bool contains_obs =
+		window_pid == self ||
+		AnyAncestor(GetProcessParents(), self,
+			    [&](DWORD ancestor) { return ancestor == window_pid; });
 
 	// Check the mode under the same lock that stores the window, so a
 	// concurrent switch away from hotkey mode cannot be undone by us.
@@ -466,9 +473,9 @@ void AudioCapture::HotkeyStart()
 	if (config.mode != MODE_HOTKEY)
 		return;
 
-	if (window_pid == GetCurrentProcessId()) {
+	if (contains_obs) {
 		lock.reset();
-		info("ignoring hotkey: the foreground window belongs to OBS");
+		info("ignoring hotkey: the foreground window's process tree contains OBS");
 		return;
 	}
 
