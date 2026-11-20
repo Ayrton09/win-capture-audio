@@ -557,19 +557,20 @@ static void *audio_capture_create(obs_data_t *settings, obs_source_t *source)
 
 AudioCapture::~AudioCapture()
 {
-	live_audio_captures.fetch_sub(1);
-
 	obs_hotkey_pair_unregister(hotkey_pair);
 
 	if (auto *monitor = SessionMonitor::Instance())
 		monitor->UnRegisterEvent(worker_tid);
 
-	if (!worker_thread.joinable())
-		return;
+	if (worker_thread.joinable()) {
+		worker_ready.wait();
+		PostThreadMessageA(worker_tid, CaptureEvents::Shutdown, NULL, NULL);
+		worker_thread.join();
+	}
 
-	worker_ready.wait();
-	PostThreadMessageA(worker_tid, CaptureEvents::Shutdown, NULL, NULL);
-	worker_thread.join();
+	// Last: until the worker has stopped, this source still uses the session
+	// monitor, and obs_module_unload must not see it as gone.
+	live_audio_captures.fetch_sub(1);
 }
 
 static void audio_capture_destroy(void *data)
