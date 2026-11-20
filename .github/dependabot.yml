@@ -1,0 +1,16 @@
+# Weekly check for new releases of the CI actions (pinned by commit SHA in
+# build.yml; Dependabot updates the SHA and its version comment) and of the
+# WIL submodule. Security advisories are reported as alerts regardless.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly
