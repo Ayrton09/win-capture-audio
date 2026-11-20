@@ -112,6 +112,21 @@ jobs:
     permissions:
       contents: write
     steps:
+      # The release action updates an existing release in place - replacing
+      # its assets and its notes - and keeps it published. A re-run on a tag
+      # that is already out must not silently swap what users downloaded.
+      - name: Refuse to modify a published release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          $draft = gh release view $env:TAG --repo $env:GITHUB_REPOSITORY --json isDraft --jq .isDraft 2>$null
+          if ($LASTEXITCODE -eq 0 -and $draft -eq 'false') {
+            throw "Release $env:TAG is already published; refusing to overwrite it"
+          }
+          $global:LASTEXITCODE = 0
+
       - name: Download build artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

@@ -148,6 +148,11 @@ try {
 } catch {
     throw "Failed to download obs-studio $ObsVersion. Check that the tag exists, or pass -ObsVersion explicitly. ($($_.Exception.Message))"
 }
+# CI must never build a release from unverified headers: fail closed if the
+# expected hash did not make it through.
+if (-not $ExpectedSha256 -and $env:GITHUB_ACTIONS -eq 'true') {
+    throw "No -ExpectedSha256 given for the obs-studio $ObsVersion tarball in CI"
+}
 if ($ExpectedSha256) {
     # .NET directly rather than Get-FileHash: when CMake runs this script from
     # a PowerShell 7 session (as CI does), the inherited PSModulePath can keep
