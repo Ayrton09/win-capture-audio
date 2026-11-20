@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Build
+
+- CI actions moved to their Node 24 releases (checkout v7, upload-artifact v7,
+  download-artifact v8, action-gh-release v3), still pinned to exact commits.
+  The previous Node 20 releases only ran because GitHub was forcing them onto
+  Node 24. Downloaded build artifacts are now checked against their digest.
+- WIL updated to its latest commit, which works around newer MSVC releases
+  breaking the build of WIL's fail-fast path.
+
 ## 2.3.7 — 2026-11-06
 
 ### Fixed
