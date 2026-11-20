@@ -45,12 +45,13 @@ Internally both use [ActivateAudioInterfaceAsync](https://learn.microsoft.com/en
 Grab the latest [release](../../releases/latest):
 
 - **Setup installer** (recommended for a regular OBS install): removes any older version automatically, including 2.2.x installs inside the OBS directory.
-- **Zip**: extract into `%ProgramData%\obs-studio\plugins\`.
+- **Zip**: extract into `%ProgramData%\obs-studio\plugins\`. If an older version (2.2.x) sits inside the OBS folder (`obs-studio\obs-plugins\64bit\win-capture-audio.dll`), delete it first: OBS 28–32 load that copy before the new one and ignore the new one. The installer does this for you.
 
-A **portable** OBS never reads `%ProgramData%`, so neither of the above reaches it:
+A **portable** OBS 29.1 or newer never reads `%ProgramData%`, so neither of the above reaches it:
 
 - **Portable OBS 33 or newer:** extract the zip into the `plugins\` folder next to OBS's `bin\` folder (create it if it does not exist).
-- **Portable OBS 28–32:** these only load plugins from inside the OBS folder. From the zip, copy `bin\64bit\win-capture-audio.dll` into OBS's `obs-plugins\64bit\`, and the contents of `data\` into `data\obs-plugins\win-capture-audio\`.
+- **Portable OBS 29.1–32:** these only load plugins from inside the OBS folder. From the zip, copy `bin\64bit\win-capture-audio.dll` into OBS's `obs-plugins\64bit\`, and the contents of `data\` into `data\obs-plugins\win-capture-audio\`.
+- **Portable OBS 28.0–29.0** reads both places: use the in-folder layout above, and make sure there is no second copy in `%ProgramData%`.
 
 The resulting layout:
 
@@ -73,12 +74,13 @@ Restart OBS and add the **"Application Audio Output Capture"** source.
 
 **Capture everything except some applications** — same mode, tick *"Capture all audio EXCEPT sessions from the selected executables"*. Remember to disable Desktop Audio (see the note above), or you will hear everything twice.
 
-Two things to know about exclude mode, both down to Windows only being able to leave out one process tree per capture:
+Things to know about exclude mode, all down to Windows only being able to leave out one process tree per capture:
 
-- **OBS's own audio.** While an excluded application is running, the capture leaves out *that* application, so whatever OBS itself plays is captured too, including audio monitoring. Like OBS's Desktop Audio, monitoring this source to the default output device is muted to avoid feeding it back into itself; don't monitor it to another device. While no excluded application is running, OBS's own process is the one left out instead.
-- **Browser sources.** A Browser Source with *"Control audio via OBS"* unticked plays from OBS's process, so with the point above it is captured only while an excluded application is running. Tick *"Control audio via OBS"* and it goes through OBS's mixer like any other source, always.
+- **OBS's own audio.** While the excluded applications that are running form a single process tree, the capture leaves out *that* tree, so whatever OBS itself plays is captured too, including audio monitoring. **Don't set an exclude-mode source to "Monitor and Output"/"Monitor Only"**: it would capture its own monitored output and feed back. While no excluded application is running, OBS's own process is the one left out instead.
+- **Several excluded applications at once.** If two or more unrelated excluded applications are running, Windows cannot leave out both, so the source falls back to capturing every other application's audio session one by one. In that state OBS's own audio is not captured, and neither are system sounds or programs without an audio session of their own.
+- **Browser sources.** A Browser Source with *"Control audio via OBS"* unticked plays from OBS's process, so with the points above whether it is captured depends on which excluded applications are running. Tick *"Control audio via OBS"* and it goes through OBS's mixer like any other source, always.
 
-**Hotkey mode** — switch the mode to *"Capture foreground window with hotkey"*, then assign the two hotkeys in **Settings → Hotkeys** under this source: *"Capture foreground window"* and *"Deactivate capture"*. (Those are the plugin's hotkeys — not the standard *Show*/*Hide* entries listed above them, which only toggle the source's visibility.) Focus the application you want and press the capture hotkey. Pressing it while an OBS window is focused does nothing.
+**Hotkey mode** — switch the mode to *"Capture foreground window with hotkey"*, then assign the two hotkeys in **Settings → Hotkeys** under this source: *"Capture foreground window"* and *"Deactivate capture"*. (Those are the plugin's hotkeys — not the standard *Show*/*Hide* entries listed above them, which only toggle the source's visibility.) Focus the application you want and press the capture hotkey. Pressing it while an OBS window, the desktop/taskbar or the program that launched OBS is focused does nothing: capturing any of those would capture OBS itself.
 
 ### Apps that play audio from more than one process
 
@@ -94,7 +96,7 @@ The universal trick: while the missing audio is actually playing, open the sourc
 
 ## Building
 
-Requirements: Visual Studio 2022 or later (MSVC C++ workload) and an installed copy of OBS Studio.
+Requirements: Visual Studio 2022 or later (MSVC C++ workload), CMake 3.24 or later (Visual Studio's bundled copy works from a *Developer PowerShell/Command Prompt*), and an installed copy of OBS Studio.
 
 ```
 git submodule update --init
@@ -108,7 +110,7 @@ There is no libobs SDK on Windows — OBS's installer ships no headers or import
 2. downloads the matching `obs-studio` tag's libobs headers, and
 3. generates `obs.lib` directly from your installed `obs.dll`'s export table,
 
-so the plugin is always built against exactly the OBS binary it will load into. To install into `%ProgramData%` after building:
+so the plugin is always built against exactly the OBS binary it will load into. To install into `%ProgramData%` after building (from an elevated prompt if the folder was created by the installer):
 
 ```
 cmake --install build --config RelWithDebInfo
@@ -121,10 +123,10 @@ Release binaries are built by CI against the **OBS 28.0.0** headers on purpose: 
 ## Troubleshooting
 
 - **"Windows protected your PC" when running the installer** — the binaries are not code-signed yet, so SmartScreen has no reputation for them. Choose "More info" → "Run anyway", and verify the download against the `SHA256SUMS.txt` published with each release if you want to be sure it was not tampered with.
-- **Source not showing up** — check the OBS log (Help → Log Files) for a `[win-capture-audio]` line. If absent, the DLL is in the wrong directory — see the layout above.
+- **Source not showing up** — check the OBS log (Help → Log Files) for a `[win-capture-audio]` line. If absent, look for a "Skipping module 'win-capture-audio'" line (OBS 32+: the plugin is disabled in Tools → Plugin Manager); otherwise the DLL is in the wrong directory — see the layout above.
 - **No audio captured** — make sure the target application is actually playing audio and appears in the Windows volume mixer. The capture attaches per audio session; an app that has not opened an audio stream yet has nothing to capture.
 - **Hotkey does nothing** — make sure you bound the plugin's own hotkeys (*"Capture foreground window"* / *"Deactivate capture"*) for the source, not the generic *Show*/*Hide* ones.
-- **Crackling or dropouts** — lower the OBS audio buffering (Settings → Advanced → Audio) or report it with a log.
+- **Crackling or dropouts** — set the source's *Latency* to *Normal*, and make sure OBS's *Low Latency Audio Buffering Mode* checkbox (in Settings; its tab depends on the OBS version) is off — OBS itself warns that it can make sources glitch. If it persists, report it with a log.
 
 Found a bug? [Open an issue](../../issues) and attach your OBS log.
 

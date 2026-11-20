@@ -154,7 +154,7 @@ jobs:
           body: |
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for the full list of changes.
 
-            **Install:** run `win-capture-audio-${{ github.ref_name }}-setup.exe` (removes any older version automatically), or extract the zip into `%ProgramData%\obs-studio\plugins\`. Portable OBS installs never read `%ProgramData%`: see the README's Installation section for where the files go there.
+            **Install:** run `win-capture-audio-${{ github.ref_name }}-setup.exe` (removes any older version automatically), or extract the zip into `%ProgramData%\obs-studio\plugins\`. For a portable OBS, see the README's Installation section for where the files go.
 
             SHA-256 checksums are attached as `SHA256SUMS.txt`.
 
